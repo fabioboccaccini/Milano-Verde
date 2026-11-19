@@ -36,7 +36,7 @@ const CFG = {
   gbif: 'https://api.gbif.org/v1/occurrence/search',
   gbifInat: '50c9509d-22c7-4a22-a47d-8c48425ef4a7', // dataset iNaturalist dentro GBIF: escluso per non contare due volte
   ebird: 'https://api.ebird.org/v2/data/obs/geo/recent', // richiede chiave personale (campo nel pannello)
-  cartoKey: 'cb1_5agz_1_f1a0c909ef4a187a638aa616', // chiave gratuita CARTO Basemaps: si può scrivere qui oppure incollare nel pannello Livelli
+  cartoKey: 'cb1_5agz_1_f1a0c909ef4a187a638aa616', // chiave gratuita CARTO Basemaps, vincolata al dominio nashkaze.github.io dal pannello CARTO
   center: [45.4642, 9.19],
   bbox: {s: 45.386, w: 9.04, n: 45.536, e: 9.28},
   smallPop: 1000

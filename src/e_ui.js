@@ -223,8 +223,6 @@ function buildPanel() {
   $('#moreinat').onclick = async () => { const b = $('#moreinat'); b.disabled = true; b.textContent = 'Carico…'; await loadInat(5); b.disabled = false; b.textContent = 'Carica altre 1.000 da iNaturalist'; };
   $('#ebgo').onclick = () => { const k = $('#ebkey').value.trim(); if (k) { src('ebird', 'eBird', 'wait', 'Richiesta in corso…'); loadEbird(k); } };
   try { const k = localStorage.getItem('mv-ebird'); if (k) $('#ebkey').value = k; } catch (e) {}
-  $('#ckey').value = cartoKey();
-  $('#ckgo').onclick = () => { const k = $('#ckey').value.trim(); try { if (k) localStorage.setItem('mv-carto', k); else localStorage.removeItem('mv-carto'); } catch (e) {} setBasemap(k); };
   $('#btipo').onclick = loadTipologie;
   $('#kml').onchange = e => { if (e.target.files[0]) loadKml(e.target.files[0]); };
   // modalità
@@ -238,7 +236,7 @@ function buildPanel() {
   // schede, pannello, etichette
   [...$('#tabs').children].forEach(b => { b.onclick = () => showTab(b.dataset.t); });
   $('#bpanel').onclick = () => togglePanel();
-  $('#blabels').onclick = () => { if (!labelTiles) { showTab('livelli'); $('#ckey').focus(); return; } const on = map.hasLayer(labelTiles); if (on) map.removeLayer(labelTiles); else labelTiles.addTo(map); $('#blabels').classList.toggle('on', !on); };
+  $('#blabels').onclick = () => { if (!labelTiles) return; const on = map.hasLayer(labelTiles); if (on) map.removeLayer(labelTiles); else labelTiles.addTo(map); $('#blabels').classList.toggle('on', !on); };
   $('#bgeo').onclick = locateMe;
   if (isMobile()) togglePanel(false);
 }

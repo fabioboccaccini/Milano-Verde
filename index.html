@@ -207,9 +207,6 @@ a{color:var(--water)}
     <section class="tab on" id="t-livelli">
       <h2>LIVELLI DELLA MAPPA</h2>
       <div id="layers"></div>
-      <h2>MAPPA DI BASE</h2>
-      <p class="note">CARTO richiede una chiave gratuita, senza account: <a href="https://carto.com/basemaps/apikey" target="_blank" rel="noopener">carto.com/basemaps/apikey</a>. Resta solo in questo browser.</p>
-      <div class="sub" style="padding-left:0;border:0"><input type="text" id="ckey" placeholder="incolla la chiave CARTO" autocomplete="off"><button class="btn sm" id="ckgo">Usa la chiave</button></div>
       <h2>GLICINI (FILE KML)</h2>
       <p class="note">Livello predisposto: carica un file KML o KMZ esportato da Google My Maps. I punti restano nel tuo browser.</p>
       <input type="file" id="kml" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" style="margin:6px 0">
@@ -285,7 +282,7 @@ const CFG = {
   gbif: 'https://api.gbif.org/v1/occurrence/search',
   gbifInat: '50c9509d-22c7-4a22-a47d-8c48425ef4a7', // dataset iNaturalist dentro GBIF: escluso per non contare due volte
   ebird: 'https://api.ebird.org/v2/data/obs/geo/recent', // richiede chiave personale (campo nel pannello)
-  cartoKey: 'cb1_5agz_1_f1a0c909ef4a187a638aa616', // chiave gratuita CARTO Basemaps: si può scrivere qui oppure incollare nel pannello Livelli
+  cartoKey: 'cb1_5agz_1_f1a0c909ef4a187a638aa616', // chiave gratuita CARTO Basemaps, vincolata al dominio nashkaze.github.io dal pannello CARTO
   center: [45.4642, 9.19],
   bbox: {s: 45.386, w: 9.04, n: 45.536, e: 9.28},
   smallPop: 1000
@@ -713,12 +710,12 @@ function initMap() {
   map.on('zoomend', updateHud);
 }
 
-function cartoKey() { let k = CFG.cartoKey || ''; try { k = localStorage.getItem('mv-carto') || k; } catch (e) {} return k.trim(); }
+function cartoKey() { return (CFG.cartoKey || '').trim(); }
 function setBasemap(key, style) {
   const att = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
   const hadLabels = labelTiles && map.hasLayer(labelTiles);
   if (baseTiles) map.removeLayer(baseTiles); if (labelTiles) map.removeLayer(labelTiles); baseTiles = labelTiles = null;
-  if (!key) { src('carto', 'Mappa di base CARTO', 'off', 'Serve una chiave gratuita: richiedila su carto.com/basemaps/apikey e incollala nel pannello Livelli. Senza chiave la mappa mostra solo i dati.'); return; }
+  if (!key) { src('carto', 'Mappa di base CARTO', 'off', 'Serve una chiave gratuita: richiedila su carto.com/basemaps/apikey e scrivila in CFG.cartoKey (a_tables.js). Senza chiave la mappa mostra solo i dati.'); return; }
   const u = v => 'https://basemaps.cartocdn.com/rastertiles/' + v + '/{z}/{x}/{y}{r}.png?key=' + encodeURIComponent(key);
   // Positron senza etichette, ricolorata via filtro CSS (.base-tiles); etichette su un livello separato
   baseTiles = L.tileLayer(u(style || 'light_nolabels'), {maxZoom: 20, maxNativeZoom: 18, className: 'base-tiles', attribution: att}).addTo(map);
@@ -1588,8 +1585,6 @@ function buildPanel() {
   $('#moreinat').onclick = async () => { const b = $('#moreinat'); b.disabled = true; b.textContent = 'Carico…'; await loadInat(5); b.disabled = false; b.textContent = 'Carica altre 1.000 da iNaturalist'; };
   $('#ebgo').onclick = () => { const k = $('#ebkey').value.trim(); if (k) { src('ebird', 'eBird', 'wait', 'Richiesta in corso…'); loadEbird(k); } };
   try { const k = localStorage.getItem('mv-ebird'); if (k) $('#ebkey').value = k; } catch (e) {}
-  $('#ckey').value = cartoKey();
-  $('#ckgo').onclick = () => { const k = $('#ckey').value.trim(); try { if (k) localStorage.setItem('mv-carto', k); else localStorage.removeItem('mv-carto'); } catch (e) {} setBasemap(k); };
   $('#btipo').onclick = loadTipologie;
   $('#kml').onchange = e => { if (e.target.files[0]) loadKml(e.target.files[0]); };
   // modalità
@@ -1603,7 +1598,7 @@ function buildPanel() {
   // schede, pannello, etichette
   [...$('#tabs').children].forEach(b => { b.onclick = () => showTab(b.dataset.t); });
   $('#bpanel').onclick = () => togglePanel();
-  $('#blabels').onclick = () => { if (!labelTiles) { showTab('livelli'); $('#ckey').focus(); return; } const on = map.hasLayer(labelTiles); if (on) map.removeLayer(labelTiles); else labelTiles.addTo(map); $('#blabels').classList.toggle('on', !on); };
+  $('#blabels').onclick = () => { if (!labelTiles) return; const on = map.hasLayer(labelTiles); if (on) map.removeLayer(labelTiles); else labelTiles.addTo(map); $('#blabels').classList.toggle('on', !on); };
   $('#bgeo').onclick = locateMe;
   if (isMobile()) togglePanel(false);
 }
