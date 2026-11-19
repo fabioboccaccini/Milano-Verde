@@ -1,0 +1,69 @@
+<div id="loader">
+  <h1>MILANO VERDE</h1>
+  <div class="tag">FLORA E FAUNA DELLA CITT&Agrave; &middot; DATI APERTI</div>
+  <canvas id="plant" class="pix" width="48" height="56"></canvas>
+  <div id="lbar"></div>
+  <div id="lpct">0%</div>
+  <div id="lmsg">Preparo il terreno&hellip;</div>
+  <button class="btn" id="lskip">Apri la mappa</button>
+</div>
+
+<header id="bar">
+  <button class="btn" id="bpanel" aria-label="Apri o chiudi il pannello">&#9776; Livelli</button>
+  <h1>MILANO VERDE<small>BETA</small></h1>
+  <div class="sp"></div>
+  <button class="btn sm" id="bgeo" title="Mostra la mia posizione" aria-label="Mostra la mia posizione">&#9678; Qui</button>
+  <button class="btn sm" id="blabels" title="Nomi di vie e quartieri">Nomi</button>
+</header>
+
+<main>
+  <div id="map"></div>
+
+  <aside id="panel">
+    <div id="tabs">
+      <button data-t="livelli" class="on">Livelli</button>
+      <button data-t="incroci">Incroci</button>
+      <button data-t="classifica">Classifica</button>
+      <button data-t="info">Info</button>
+    </div>
+
+    <section class="tab on" id="t-livelli">
+      <h2>LIVELLI DELLA MAPPA</h2>
+      <div id="layers"></div>
+      <h2>MAPPA DI BASE</h2>
+      <p class="note">CARTO richiede una chiave gratuita, senza account: <a href="https://carto.com/basemaps/apikey" target="_blank" rel="noopener">carto.com/basemaps/apikey</a>. Resta solo in questo browser.</p>
+      <div class="sub" style="padding-left:0;border:0"><input type="text" id="ckey" placeholder="incolla la chiave CARTO" autocomplete="off"><button class="btn sm" id="ckgo">Usa la chiave</button></div>
+      <h2>GLICINI (FILE KML)</h2>
+      <p class="note">Livello predisposto: carica un file KML o KMZ esportato da Google My Maps. I punti restano nel tuo browser.</p>
+      <input type="file" id="kml" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" style="margin:6px 0">
+      <div class="note" id="kmlmsg"></div>
+    </section>
+
+    <section class="tab" id="t-incroci">
+      <h2>INCROCI DI DATI</h2>
+      <div class="modes" id="modes"></div>
+      <div id="modeui"></div>
+    </section>
+
+    <section class="tab" id="t-classifica">
+      <h2>CLASSIFICA DEI QUARTIERI</h2>
+      <select class="full" id="metric"></select>
+      <label class="chk"><input type="checkbox" id="exsmall" checked> Escludi i NIL con meno di 1.000 residenti (parchi, scali, aree agricole)</label>
+      <div id="rankkpi"></div>
+      <ol class="rank" id="rank"></ol>
+    </section>
+
+    <section class="tab" id="t-info">
+      <h2>STATO DELLE FONTI</h2>
+      <p class="note">Aggiornato in diretta a ogni apertura della pagina.</p>
+      <table class="src" id="srcs"></table>
+      <h2>CREDITI E LICENZE</h2>
+      <div id="credits"></div>
+      <h2>METODO E LIMITI</h2>
+      <div id="method"></div>
+    </section>
+  </aside>
+
+  <div id="legend"></div>
+  <div id="hud"></div>
+</main>
