@@ -1,3 +1,7 @@
 milano-verde-v*.html
 __pycache__/
 .DS_Store
+# file grezzi di partenza, non pubblicati
+*.geojson
+*.kml*
+604dd6bb-*.csv

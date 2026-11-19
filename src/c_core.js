@@ -337,6 +337,15 @@ function idb(mode, fn) {
 }
 
 /* --- Fonte 1: portale Open Data del Comune (se e quando il dataset torna pubblico) --- */
+/* --- Fonte 2: copia del censimento del Comune pubblicata nel repository, accanto alla pagina --- */
+async function treesFromRepo() {
+  const c = CFG.treesRepo; T.expected = c.n;
+  hudTrees('Carico il censimento degli alberi…', 0.05);
+  const r = await fetchX(c.url, {timeout: 120000});
+  await ingestBlob(await r.blob(), c.url, 'Alberi');
+  if (!T.n) throw new Error('file vuoto o non leggibile');
+  return 'censimento del Comune di Milano aggiornato al ' + c.date + ' (copia del dataset ds2484, CC BY 4.0)';
+}
 async function treesFromCkan() {
   let pkg = null, lastErr;
   for (const id of CFG.treesPkg) { try { const r = await fetchJSON(CFG.ckan + '/api/3/action/package_show?id=' + id, {timeout: 15000}); if (r.success) { pkg = r.result; break; } } catch (e) { lastErr = e; } }
@@ -399,7 +408,7 @@ function treesReset() {
 let _firstTrees;
 const firstTrees = new Promise(r => { _firstTrees = r; });
 async function loadTrees() {
-  const chain = [['ckan', 'Portale Open Data del Comune', treesFromCkan], ['file', 'File salvato in questo browser', treesFromCache], ['arcgis', 'Geoportale del Comune (ArcGIS)', treesFromArcgis], ['osm', 'OpenStreetMap (Overpass)', treesFromOSM]];
+  const chain = [['ckan', 'Portale Open Data del Comune', treesFromCkan], ['repo', 'Copia del censimento sul sito', treesFromRepo], ['file', 'File salvato in questo browser', treesFromCache], ['arcgis', 'Geoportale del Comune (ArcGIS)', treesFromArcgis], ['osm', 'OpenStreetMap (Overpass)', treesFromOSM]];
   const fails = [];
   for (const [key, label, fn] of chain) {
     treesReset(); src('alberi', 'Alberi', 'wait', 'Provo: ' + label + '…' + (fails.length ? '<br>' + fails.join('<br>') : ''));

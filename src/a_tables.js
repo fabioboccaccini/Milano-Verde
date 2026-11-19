@@ -29,6 +29,9 @@ const CFG = {
   treesPkg: ['ds2484_infogeo_alberi_localizzazione', '609a5892-f5fa-4fa3-98e3-eab9ebeba5b8'],
   // Vecchio geoportale ArcGIS (livello "Alberi"): al 16/11/2026 il server non risponde.
   // Tentativo lasciato in catena perché costa poco. NON TESTATO: i campi sono dedotti a runtime.
+  // Copia del censimento ufficiale (ds2484, aggiornato al 31/03/2024) pubblicata accanto alla pagina:
+  // CSV ridotto alle colonne utili e compresso. Licenza CC BY 4.0, © Comune di Milano.
+  treesRepo: {url: 'data/alberi.zip', n: 247779, date: '31/03/2024'},
   arcgisTrees: 'https://geoportale.comune.milano.it/arcgisportalh/rest/services/OperationalLayers/Patrimonio_Verde_Realtime/MapServer/1',
   // OpenStreetMap via Overpass (CORS aperto). NON TESTATO da questo ambiente di sviluppo.
   overpass: ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'],

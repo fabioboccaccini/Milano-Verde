@@ -296,7 +296,7 @@ async function loadTipologie() {
 
 function renderStatic() {
   $('#credits').innerHTML = '<ul style="padding-left:18px;margin:6px 0;font-size:13px">' +
-    '<li><b>Comune di Milano, Open Data</b> (dati.comune.milano.it): confini dei NIL, residenti per NIL, parchi e giardini, orti urbani, giardini condivisi, alberi monumentali, aree verdi per tipologia, indici di calore e di verde per NIL (elaborazione progetto SPOTTED), censimento degli alberi quando disponibile. Licenza <a href="https://creativecommons.org/licenses/by/4.0/deed.it" target="_blank" rel="noopener">CC BY 4.0</a>.</li>' +
+    '<li><b>Comune di Milano, Open Data</b> (dati.comune.milano.it): confini dei NIL, residenti per NIL, parchi e giardini, orti urbani, giardini condivisi, alberi monumentali, aree verdi per tipologia, indici di calore e di verde per NIL (elaborazione progetto SPOTTED), censimento degli alberi (dataset ds2484 aggiornato al 31/03/2024, ritirato dal portale: il sito ne pubblica una copia ridotta alle colonne usate). Licenza <a href="https://creativecommons.org/licenses/by/4.0/deed.it" target="_blank" rel="noopener">CC BY 4.0</a>.</li>' +
     '<li><b>iNaturalist</b> (inaturalist.org): osservazioni e fotografie dei singoli utenti, ciascuna con la propria licenza indicata nella scheda. Uso tramite API pubblica.</li>' +
     '<li><b>GBIF</b> (gbif.org): occorrenze dai dataset aderenti, con licenze CC0, CC BY o CC BY-NC indicate per record. GBIF.org, Occurrence Search.</li>' +
     '<li><b>eBird</b> (Cornell Lab of Ornithology): solo se inserisci una tua chiave, secondo i termini d\'uso dell\'API.</li>' +

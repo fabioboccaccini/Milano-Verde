@@ -275,6 +275,9 @@ const CFG = {
   treesPkg: ['ds2484_infogeo_alberi_localizzazione', '609a5892-f5fa-4fa3-98e3-eab9ebeba5b8'],
   // Vecchio geoportale ArcGIS (livello "Alberi"): al 16/11/2026 il server non risponde.
   // Tentativo lasciato in catena perché costa poco. NON TESTATO: i campi sono dedotti a runtime.
+  // Copia del censimento ufficiale (ds2484, aggiornato al 31/03/2024) pubblicata accanto alla pagina:
+  // CSV ridotto alle colonne utili e compresso. Licenza CC BY 4.0, © Comune di Milano.
+  treesRepo: {url: 'data/alberi.zip', n: 247779, date: '31/03/2024'},
   arcgisTrees: 'https://geoportale.comune.milano.it/arcgisportalh/rest/services/OperationalLayers/Patrimonio_Verde_Realtime/MapServer/1',
   // OpenStreetMap via Overpass (CORS aperto). NON TESTATO da questo ambiente di sviluppo.
   overpass: ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'],
@@ -895,6 +898,15 @@ function idb(mode, fn) {
 }
 
 /* --- Fonte 1: portale Open Data del Comune (se e quando il dataset torna pubblico) --- */
+/* --- Fonte 2: copia del censimento del Comune pubblicata nel repository, accanto alla pagina --- */
+async function treesFromRepo() {
+  const c = CFG.treesRepo; T.expected = c.n;
+  hudTrees('Carico il censimento degli alberi…', 0.05);
+  const r = await fetchX(c.url, {timeout: 120000});
+  await ingestBlob(await r.blob(), c.url, 'Alberi');
+  if (!T.n) throw new Error('file vuoto o non leggibile');
+  return 'censimento del Comune di Milano aggiornato al ' + c.date + ' (copia del dataset ds2484, CC BY 4.0)';
+}
 async function treesFromCkan() {
   let pkg = null, lastErr;
   for (const id of CFG.treesPkg) { try { const r = await fetchJSON(CFG.ckan + '/api/3/action/package_show?id=' + id, {timeout: 15000}); if (r.success) { pkg = r.result; break; } } catch (e) { lastErr = e; } }
@@ -957,7 +969,7 @@ function treesReset() {
 let _firstTrees;
 const firstTrees = new Promise(r => { _firstTrees = r; });
 async function loadTrees() {
-  const chain = [['ckan', 'Portale Open Data del Comune', treesFromCkan], ['file', 'File salvato in questo browser', treesFromCache], ['arcgis', 'Geoportale del Comune (ArcGIS)', treesFromArcgis], ['osm', 'OpenStreetMap (Overpass)', treesFromOSM]];
+  const chain = [['ckan', 'Portale Open Data del Comune', treesFromCkan], ['repo', 'Copia del censimento sul sito', treesFromRepo], ['file', 'File salvato in questo browser', treesFromCache], ['arcgis', 'Geoportale del Comune (ArcGIS)', treesFromArcgis], ['osm', 'OpenStreetMap (Overpass)', treesFromOSM]];
   const fails = [];
   for (const [key, label, fn] of chain) {
     treesReset(); src('alberi', 'Alberi', 'wait', 'Provo: ' + label + '…' + (fails.length ? '<br>' + fails.join('<br>') : ''));
@@ -1658,7 +1670,7 @@ async function loadTipologie() {
 
 function renderStatic() {
   $('#credits').innerHTML = '<ul style="padding-left:18px;margin:6px 0;font-size:13px">' +
-    '<li><b>Comune di Milano, Open Data</b> (dati.comune.milano.it): confini dei NIL, residenti per NIL, parchi e giardini, orti urbani, giardini condivisi, alberi monumentali, aree verdi per tipologia, indici di calore e di verde per NIL (elaborazione progetto SPOTTED), censimento degli alberi quando disponibile. Licenza <a href="https://creativecommons.org/licenses/by/4.0/deed.it" target="_blank" rel="noopener">CC BY 4.0</a>.</li>' +
+    '<li><b>Comune di Milano, Open Data</b> (dati.comune.milano.it): confini dei NIL, residenti per NIL, parchi e giardini, orti urbani, giardini condivisi, alberi monumentali, aree verdi per tipologia, indici di calore e di verde per NIL (elaborazione progetto SPOTTED), censimento degli alberi (dataset ds2484 aggiornato al 31/03/2024, ritirato dal portale: il sito ne pubblica una copia ridotta alle colonne usate). Licenza <a href="https://creativecommons.org/licenses/by/4.0/deed.it" target="_blank" rel="noopener">CC BY 4.0</a>.</li>' +
     '<li><b>iNaturalist</b> (inaturalist.org): osservazioni e fotografie dei singoli utenti, ciascuna con la propria licenza indicata nella scheda. Uso tramite API pubblica.</li>' +
     '<li><b>GBIF</b> (gbif.org): occorrenze dai dataset aderenti, con licenze CC0, CC BY o CC BY-NC indicate per record. GBIF.org, Occurrence Search.</li>' +
     '<li><b>eBird</b> (Cornell Lab of Ornithology): solo se inserisci una tua chiave, secondo i termini d\'uso dell\'API.</li>' +
