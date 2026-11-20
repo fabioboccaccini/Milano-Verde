@@ -174,18 +174,17 @@ a{color:var(--water)}
 #bar .btn.sm{white-space:nowrap}
 @media (max-width:760px){#bar{gap:6px;padding:8px 6px}#bar .btn.sm{padding:8px 6px}}
 
-/* PROVA iOS: la pagina arriva fino al bordo dello schermo, sotto la barra di Safari;
-   gli elementi in basso si alzano dello spazio della barra (solo iPhone e iPad) */
-@supports (-webkit-touch-callout:none){
-  :root{--iosbar:calc(env(safe-area-inset-bottom) + 64px)}
-  html,body{height:100lvh}
-  body{height:100lvh}
-  .leaflet-bottom{bottom:var(--iosbar)}
-  @media (max-width:760px){
-    #hud{bottom:calc(22px + var(--iosbar))}
-    #panel{padding-bottom:var(--iosbar)}
-  }
-}
+/* ===== PROVA iOS: varianti scelte con ?v=1, ?v=2, ?v=3 ===== */
+html.v1,html.v1 body{height:100lvh}
+html.v2 body,html.v3 body{overflow:visible;height:100dvh}
+html.v2,html.v3{overflow:visible}
+html.v2 main,html.v3 main{position:static}
+html.v2 #map{position:fixed;top:0;left:0;right:0;height:100lvh;z-index:0}
+html.v3 #map{position:fixed;top:0;left:0;right:0;height:calc(100lvh + 140px);z-index:0}
+html.v2 #bar,html.v3 #bar{position:relative;z-index:1200}
+html.v2 #panel,html.v3 #panel,html.v2 #hud,html.v3 #hud,html.v2 #legend,html.v3 #legend{position:fixed}
+#diag{position:fixed;left:8px;top:120px;z-index:5000;background:rgba(27,28,46,.9);color:#fff;font:12px/1.35 monospace;padding:8px 10px;white-space:pre;pointer-events:none}
+.probe{position:fixed;left:-9px;top:0;width:1px;visibility:hidden}
 </style>
 </head>
 <body>
@@ -1773,6 +1772,19 @@ async function main() {
 }
 window.addEventListener('DOMContentLoaded', main);
 
+</script>
+
+<script>
+(function(){
+  var v=(location.search.match(/v=(\d)/)||[])[1]||'0'; document.documentElement.classList.add('v'+v);
+  function px(h){var d=document.createElement('div');d.className='probe';d.style.height=h;document.body.appendChild(d);var r=d.getBoundingClientRect().height;d.remove();return Math.round(r);}
+  function show(){var b=document.getElementById('diag');if(!b){b=document.createElement('div');b.id='diag';document.body.appendChild(b);}
+    var m=document.getElementById('map').getBoundingClientRect();
+    b.textContent='VARIANTE '+v+'\ninnerHeight '+innerHeight+'\nvisualViewport '+(window.visualViewport?Math.round(visualViewport.height):'-')+
+    '\nclientHeight '+document.documentElement.clientHeight+'\n100svh '+px('100svh')+'  100dvh '+px('100dvh')+'  100lvh '+px('100lvh')+
+    '\nsafe-bottom '+px('env(safe-area-inset-bottom)')+'\nschermo '+screen.height+'\nmappa: da '+Math.round(m.top)+' a '+Math.round(m.bottom);}
+  addEventListener('load',function(){setTimeout(show,800)}); addEventListener('resize',show); if(window.visualViewport)visualViewport.addEventListener('resize',show);
+})();
 </script>
 </body>
 </html>
