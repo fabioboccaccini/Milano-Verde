@@ -14,6 +14,7 @@ Mappa interattiva di flora e fauna di Milano in stile pixel art anni '90. Un'uni
 | `src/style.css`, `src/body.html` | Stile e struttura della pagina |
 | `build.py` | Concatena tutto in `index.html` |
 | `data/nil.geojson` | Copia dei confini dei NIL (ds964, PGT 2030, fermi al 2020), usata se il portale non li serve: a volte li manda senza CORS |
+| `data/parchi.json` | Copia dei parchi e giardini (ds89, versione del 06/05/2024) con le sole colonne usate e coordinate al metro: 1,1 MB, 180 KB compressi, contro 5 MB non compressi dal portale. È la prima scelta; il portale è il ripiego. Da rigenerare se il Comune aggiorna il dataset |
 | `data/gbif_nil.json` | Conteggi GBIF delle occorrenze animali per NIL, generati da `tools/gbif_nil_counts.py` |
 | `tools/gbif_nil_counts.py` | Rigenera `data/gbif_nil.json` (88 richieste in sequenza a GBIF, circa due minuti): da rilanciare ogni tanto |
 | `data/alberi.zip` | Censimento degli alberi del Comune (ds2484, 31/03/2024, 247.779 alberi), ridotto alle colonne usate e compresso (2,6 MB) |

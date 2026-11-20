@@ -258,7 +258,7 @@ const CFG = {
   // con package_show; quelli qui sotto sono il ripiego se la risoluzione fallisce.
   pkg: {
     nil:      {id: 'ds964-nil-vigenti-pgt-2030', fmt: 'GeoJSON', local: 'data/nil.geojson', url: '/dataset/e8e765fc-d882-40b8-95d8-16ff3d39eb7c/resource/9c4e0776-56fc-4f3d-8a90-f4992a3be426/download/ds964_nil_wm.geojson'},
-    parchi:   {id: 'ds89_infogeo_parchi_giardini_localizzazione_', fmt: 'GeoJSON', url: '/dataset/8920bbea-fe1a-4061-8c6e-0746d95316c1/resource/7cba11e7-c236-49a7-aef4-4db6329eec5d/download/parchi.geojson'},
+    parchi:   {id: 'ds89_infogeo_parchi_giardini_localizzazione_', fmt: 'GeoJSON', local: 'data/parchi.json', localFirst: true, localDate: '06/05/2024', url: '/dataset/8920bbea-fe1a-4061-8c6e-0746d95316c1/resource/7cba11e7-c236-49a7-aef4-4db6329eec5d/download/parchi.geojson'},
     orti:     {id: 'ds2186-infogeo-orti-urbani-localizzazione', fmt: 'GeoJSON', url: '/dataset/8f85ebf9-73c7-45cc-a428-66d56b7b46a4/resource/3c052ee5-47d8-4902-b2be-85e053a4ed41/download/ds2186_aree_orti_comunali.geojson'},
     giardini: {id: 'ds2187-infogeo-giardini-condivisi-localizzazione', fmt: 'GeoJSON', url: '/dataset/57c2441d-69f1-42b9-a83d-41d8b98ddcbd/resource/df9a8989-51e2-4927-aef3-0487a80dc75e/download/ds2187_giardini_condivisi.geojson'},
     monum:    {id: 'ds2489-gli-alberi-monumentali-nel-comune-di-milano', fmt: 'GeoJSON', url: '/dataset/4e405e99-895e-486c-be70-f8c759e47b31/resource/ea95b273-0a6d-444a-a1fb-b83eae24ce4d/download/alberi_monumentali_031123_final.geojson'}
@@ -1272,23 +1272,29 @@ async function ckanUrl(p) {
   } catch (e) {}
   return {url: CFG.ckan + p.url, title: p.id, mod: ''};
 }
+/* Livelli del Comune. Alcuni hanno una copia nel sito (data/): i NIL perché il portale a volte li serve
+   senza CORS, i parchi perché il portale li manda non compressi (5 MB, contro 180 KB della copia).
+   localFirst: la copia è la prima scelta e il portale il ripiego; altrimenti il contrario. */
 async function loadCkanGeo(key, label) {
   src(key, label, 'wait', 'Scarico…');
-  try {
-    const u = await ckanUrl(CFG.pkg[key]), gj = await fetchJSON(u.url, {timeout: 60000});
-    if (!gj.features) throw new Error('formato inatteso');
-    src(key, label, 'ok', fmt(gj.features.length) + ' elementi · ' + esc(u.title) + (u.mod ? ' · aggiornato al ' + u.mod.split('-').reverse().join('/') : ''));
-    return gj;
-  } catch (e) {
-    // copia nel sito per i dati stabili (i NIL sono fermi al 2020): il portale a volte li serve senza CORS
-    const loc = CFG.pkg[key].local;
-    if (loc) try {
-      const gj = await fetchJSON(loc, {timeout: 30000}); if (!gj.features) throw new Error('formato inatteso');
-      src(key, label, 'ok', fmt(gj.features.length) + ' elementi · copia nel sito del dataset del Comune (' + esc(CFG.pkg[key].id) + '). Portale non leggibile: ' + esc(e.message) + '.');
+  const p = CFG.pkg[key];
+  const portal = async () => {
+    const u = await ckanUrl(p), gj = await fetchJSON(u.url, {timeout: 60000}); if (!gj.features) throw new Error('formato inatteso');
+    return [gj, esc(u.title) + (u.mod ? ' · aggiornato al ' + u.mod.split('-').reverse().join('/') : '')];
+  };
+  const local = async () => {
+    const gj = await fetchJSON(p.local, {timeout: 30000}); if (!gj.features) throw new Error('formato inatteso');
+    return [gj, 'copia nel sito del dataset del Comune (' + esc(p.id) + (p.localDate ? ', versione del ' + p.localDate : '') + ')'];
+  };
+  const order = !p.local ? [portal] : p.localFirst ? [local, portal] : [portal, local], errs = [];
+  for (const fn of order) {
+    try {
+      const [gj, note] = await fn();
+      src(key, label, 'ok', fmt(gj.features.length) + ' elementi · ' + note + (errs.length ? '. Prima fonte non leggibile: ' + errs.join('; ') : ''));
       return gj;
-    } catch (e2) { src(key, label, 'err', esc(e.message) + '; copia nel sito: ' + esc(e2.message)); return null; }
-    src(key, label, 'err', esc(e.message)); return null;
+    } catch (e) { errs.push(esc(e.message)); }
   }
+  src(key, label, 'err', errs.join('; ')); return null;
 }
 function nilPopup(o) {
   const km = o.area / 1e6, small = o.pop != null && o.pop < CFG.smallPop, fa = o.faunaTot != null ? o.faunaTot : o.fauna;
@@ -1736,13 +1742,15 @@ async function main() {
   const pGiard = loadCkanGeo('giardini', 'Giardini condivisi').then(gj => { if (gj) { buildPlots('giardini', gj, PAL.pink, SPR.giardino, 'Giardino condiviso'); if (ST.on.giardini) LY.giardini.addTo(map); } tk.giardini.end('Giardini condivisi'); });
   const pMon = loadCkanGeo('monum', 'Alberi monumentali').then(gj => { if (gj) { buildMonum(gj); if (ST.on.monum) LY.monum.addTo(map); } tk.monum.end('Alberi monumentali'); });
   loadTrees(); firstTrees.then(() => tk.alberi.end(T.n ? 'Alberi piantati' : 'Alberi non disponibili'));
-  const pFauna = loadInat(3).then(() => { tk.fauna.end('Fauna avvistata'); loadGbif(); loadGbifNilCounts(); });
+  const pFauna = loadInat(1).then(() => { tk.fauna.end('Fauna avvistata'); loadGbif(); loadGbifNilCounts(); });
 
   // la mappa si apre quando i livelli di base sono pronti; alberi e fauna possono proseguire dietro
   const treesSoon = Promise.race([firstTrees, sleep(14000)]), faunaSoon = Promise.race([pFauna, sleep(9000)]);
   await Promise.all([pPop, pIdx, pParchi, pOrti, pGiard, pMon, treesSoon, faunaSoon]);
   clearTimeout(hard); Loader.msg('Pronto!'); Loader.finish();
   setMode('none');
+  // altre 400 osservazioni iNaturalist dopo l'apertura: una pagina sola basta per partire
+  pFauna.then(() => sleep(1100)).then(() => loadInat(2));
 }
 window.addEventListener('DOMContentLoaded', main);
 

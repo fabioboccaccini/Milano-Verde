@@ -361,12 +361,14 @@ async function main() {
   const pGiard = loadCkanGeo('giardini', 'Giardini condivisi').then(gj => { if (gj) { buildPlots('giardini', gj, PAL.pink, SPR.giardino, 'Giardino condiviso'); if (ST.on.giardini) LY.giardini.addTo(map); } tk.giardini.end('Giardini condivisi'); });
   const pMon = loadCkanGeo('monum', 'Alberi monumentali').then(gj => { if (gj) { buildMonum(gj); if (ST.on.monum) LY.monum.addTo(map); } tk.monum.end('Alberi monumentali'); });
   loadTrees(); firstTrees.then(() => tk.alberi.end(T.n ? 'Alberi piantati' : 'Alberi non disponibili'));
-  const pFauna = loadInat(3).then(() => { tk.fauna.end('Fauna avvistata'); loadGbif(); loadGbifNilCounts(); });
+  const pFauna = loadInat(1).then(() => { tk.fauna.end('Fauna avvistata'); loadGbif(); loadGbifNilCounts(); });
 
   // la mappa si apre quando i livelli di base sono pronti; alberi e fauna possono proseguire dietro
   const treesSoon = Promise.race([firstTrees, sleep(14000)]), faunaSoon = Promise.race([pFauna, sleep(9000)]);
   await Promise.all([pPop, pIdx, pParchi, pOrti, pGiard, pMon, treesSoon, faunaSoon]);
   clearTimeout(hard); Loader.msg('Pronto!'); Loader.finish();
   setMode('none');
+  // altre 400 osservazioni iNaturalist dopo l'apertura: una pagina sola basta per partire
+  pFauna.then(() => sleep(1100)).then(() => loadInat(2));
 }
 window.addEventListener('DOMContentLoaded', main);

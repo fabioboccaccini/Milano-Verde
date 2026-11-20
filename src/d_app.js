@@ -265,23 +265,29 @@ async function ckanUrl(p) {
   } catch (e) {}
   return {url: CFG.ckan + p.url, title: p.id, mod: ''};
 }
+/* Livelli del Comune. Alcuni hanno una copia nel sito (data/): i NIL perché il portale a volte li serve
+   senza CORS, i parchi perché il portale li manda non compressi (5 MB, contro 180 KB della copia).
+   localFirst: la copia è la prima scelta e il portale il ripiego; altrimenti il contrario. */
 async function loadCkanGeo(key, label) {
   src(key, label, 'wait', 'Scarico…');
-  try {
-    const u = await ckanUrl(CFG.pkg[key]), gj = await fetchJSON(u.url, {timeout: 60000});
-    if (!gj.features) throw new Error('formato inatteso');
-    src(key, label, 'ok', fmt(gj.features.length) + ' elementi · ' + esc(u.title) + (u.mod ? ' · aggiornato al ' + u.mod.split('-').reverse().join('/') : ''));
-    return gj;
-  } catch (e) {
-    // copia nel sito per i dati stabili (i NIL sono fermi al 2020): il portale a volte li serve senza CORS
-    const loc = CFG.pkg[key].local;
-    if (loc) try {
-      const gj = await fetchJSON(loc, {timeout: 30000}); if (!gj.features) throw new Error('formato inatteso');
-      src(key, label, 'ok', fmt(gj.features.length) + ' elementi · copia nel sito del dataset del Comune (' + esc(CFG.pkg[key].id) + '). Portale non leggibile: ' + esc(e.message) + '.');
+  const p = CFG.pkg[key];
+  const portal = async () => {
+    const u = await ckanUrl(p), gj = await fetchJSON(u.url, {timeout: 60000}); if (!gj.features) throw new Error('formato inatteso');
+    return [gj, esc(u.title) + (u.mod ? ' · aggiornato al ' + u.mod.split('-').reverse().join('/') : '')];
+  };
+  const local = async () => {
+    const gj = await fetchJSON(p.local, {timeout: 30000}); if (!gj.features) throw new Error('formato inatteso');
+    return [gj, 'copia nel sito del dataset del Comune (' + esc(p.id) + (p.localDate ? ', versione del ' + p.localDate : '') + ')'];
+  };
+  const order = !p.local ? [portal] : p.localFirst ? [local, portal] : [portal, local], errs = [];
+  for (const fn of order) {
+    try {
+      const [gj, note] = await fn();
+      src(key, label, 'ok', fmt(gj.features.length) + ' elementi · ' + note + (errs.length ? '. Prima fonte non leggibile: ' + errs.join('; ') : ''));
       return gj;
-    } catch (e2) { src(key, label, 'err', esc(e.message) + '; copia nel sito: ' + esc(e2.message)); return null; }
-    src(key, label, 'err', esc(e.message)); return null;
+    } catch (e) { errs.push(esc(e.message)); }
   }
+  src(key, label, 'err', errs.join('; ')); return null;
 }
 function nilPopup(o) {
   const km = o.area / 1e6, small = o.pop != null && o.pop < CFG.smallPop, fa = o.faunaTot != null ? o.faunaTot : o.fauna;
