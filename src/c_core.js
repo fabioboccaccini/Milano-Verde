@@ -106,7 +106,7 @@ const Loader = {
     const bar = $('#lbar'); for (let i = 0; i < 16; i++) bar.appendChild(document.createElement('i'));
     this.g = $('#plant').getContext('2d');
     $('#lskip').onclick = () => this.close(true);
-    setTimeout(() => { $('#lskip').style.visibility = 'visible'; }, 9000);
+    setTimeout(() => { $('#lskip').disabled = false; }, 9000); // chi non vuole aspettare può entrare comunque
     const loop = t => {
       if (this.closed && this.shown >= 1 && performance.now() - this.tClose > 900) return;
       const target = this.total ? this.done / this.total : 0;
@@ -114,7 +114,7 @@ const Loader = {
       drawPlant(this.g, this.shown, t);
       const pct = Math.round(this.shown * 100); $('#lpct').textContent = pct + '%';
       const cells = $('#lbar').children; for (let i = 0; i < cells.length; i++) cells[i].className = (i < Math.round(this.shown * cells.length)) ? 'on' : '';
-      if (this.ready && this.shown >= 0.999 && !this.closed) this.close();
+      if (this.ready && this.shown >= 0.999 && !this.closed && !this.pressing) this.autoStart();
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
@@ -122,6 +122,11 @@ const Loader = {
   task(label, w) { this.total += w; const self = this; let fin = false; return {end(msg) { if (fin) return; fin = true; self.done += w; self.msg(msg || label); }}; },
   msg(m) { const el = $('#lmsg'); if (el) el.textContent = m; },
   finish() { this.ready = true; this.done = this.total; },
+  // a caricamento completo START lampeggia, poi si preme da solo
+  autoStart() {
+    this.pressing = true; const b = $('#lskip'); b.disabled = false; b.classList.add('ready');
+    setTimeout(() => { if (this.closed) return; b.classList.remove('ready'); b.classList.add('press'); setTimeout(() => this.close(true), 260); }, 900);
+  },
   close(force) {
     if (this.closed) return; this.closed = true; this.tClose = performance.now(); if (force) this.shown = 1;
     setTimeout(() => { $('#loader').classList.add('bye'); if (window.map) map.invalidateSize(); }, force ? 0 : 750);

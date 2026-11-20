@@ -402,7 +402,7 @@ async function main() {
   await Promise.all([pPop, pIdx, pParchi, pOrti, pGiard, pMon, treesSoon, faunaSoon]);
   clearTimeout(hard); Loader.msg('Pronto!'); Loader.finish();
   setMode('none');
-  setTimeout(() => locateMe(true), 900); // dopo la chiusura della schermata di caricamento
+  setTimeout(() => locateMe(true), 1900); // dopo la chiusura della schermata di caricamento (START si preme da solo)
   fetchJSON(CFG.wiki, {timeout: 30000}).then(j => { WIKI = j.species || null; const n = WIKI ? Object.keys(WIKI).length : 0;
     src('wiki', 'Wikipedia, schede delle specie', n ? 'ok' : 'err', fmt(n) + ' schede con testo, link e foto (dove disponibile), raccolte il ' + esc(String(j.updated || '').split('-').reverse().join('/')) + '.'); })
     .catch(e => src('wiki', 'Wikipedia, schede delle specie', 'err', esc(e.message) + ': i popup degli alberi restano senza foto.'));
