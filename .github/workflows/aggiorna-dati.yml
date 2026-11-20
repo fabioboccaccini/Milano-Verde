@@ -1,0 +1,55 @@
+# Aggiorna i file in data/ una volta al mese (Wikipedia ogni tre mesi) e ripubblica il sito.
+# Si può anche avviare a mano da GitHub: Actions → Aggiorna i dati → Run workflow.
+name: Aggiorna i dati
+
+on:
+  schedule:
+    - cron: '17 4 1 * *'   # il primo di ogni mese alle 4:17 UTC
+  workflow_dispatch:
+    inputs:
+      wikipedia:
+        description: 'Aggiorna anche le schede di Wikipedia (circa 15 minuti)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  aggiorna:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # ogni script scrive il suo file solo se arriva in fondo: se uno fallisce, gli altri vanno avanti
+      - name: Conteggi GBIF per quartiere
+        continue-on-error: true
+        run: python3 tools/gbif_nil_counts.py
+      - name: Fauna da GBIF ed eBird
+        continue-on-error: true
+        run: python3 tools/gbif_fauna.py
+      - name: Copie dei dati del Comune (parchi, quartieri)
+        continue-on-error: true
+        run: python3 tools/copie_comune.py
+      - name: Schede di Wikipedia, a richiesta
+        continue-on-error: true
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.wikipedia }}
+        run: python3 tools/wiki_species.py
+      - name: Schede di Wikipedia, gennaio aprile luglio ottobre
+        continue-on-error: true
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          case "$(date -u +%m)" in 01|04|07|10) python3 tools/wiki_species.py ;; *) echo "non è un mese di aggiornamento" ;; esac
+
+      - name: Salva i file cambiati
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "nessun cambiamento"; exit 0; fi
+          git commit -m "Dati aggiornati automaticamente ($(date -u +%Y-%m-%d))"
+          git push
