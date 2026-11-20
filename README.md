@@ -50,7 +50,7 @@ Catena degli alberi all'avvio: portale del Comune → copia nel repository (`dat
 2. **Alberi senza caricamento a mano.** Fatto: `data/alberi.zip`, ricavato da `ds2484_alberi_20240331.geojson` (colonne lon, lat, genere, specie, varieta, h_m, diam_tronc, diam_chiom, localita, anno di impianto; coordinate a 6 decimali).
 3. **Chiave CARTO pubblica.** Vincolata al dominio `nashkaze.github.io` (verificato: 200 da quel dominio, 403 da altri). Il campo nel pannello è stato tolto. Aprendo `index.html` come file locale la mappa di base non compare.
 4. **Varianti CARTO.** La pagina usa `light_nolabels` e `light_only_labels`, non documentate con il nuovo schema a chiave. Se mancano, ripiega da sola su `light_all`.
-5. **Zoom massimo.** La mappa arriva al livello 20; i tasselli si fermano al 18 e oltre vengono ingranditi. Al 20 gli alberi sono sprite da 48 px.
+5. **Zoom massimo.** La mappa arriva al livello 21; i tasselli si fermano al 18 e oltre vengono ingranditi. Etichette fino al 19. Sprite degli alberi: 48 px al 20, 64 px al 21.
 6. **Geolocalizzazione.** Funziona solo in https (GitHub Pages). Da provare su telefono vero.
 6b. **iPhone, barra di Safari.** La pagina è alta 120px più dello schermo: Safari disegna sotto la sua barra galleggiante solo il contenuto che sporge oltre il fondo, mentre gli elementi fissi vengono tagliati (verificato con varianti di prova su iOS, 20/11/2026). Scorrimento e zoom della pagina sono bloccati; gli elementi in basso sono rialzati di 120px. Tutto dentro `@supports (-webkit-touch-callout:none)`.
 7. **Icone.** I glicini seguono la scala degli alberi. Orti, giardini condivisi e monumentali sono ancora più grandi: decidere se allinearli.

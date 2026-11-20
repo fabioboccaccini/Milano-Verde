@@ -134,7 +134,7 @@ const Loader = {
 let map, baseTiles, labelTiles;
 const isMobile = () => window.matchMedia('(max-width:760px)').matches;
 function initMap() {
-  map = window.map = L.map('map', {center: CFG.center, zoom: isMobile() ? 12 : 13, minZoom: 10, maxZoom: 20, zoomControl: false, preferCanvas: true, tap: false});
+  map = window.map = L.map('map', {center: CFG.center, zoom: isMobile() ? 12 : 13, minZoom: 10, maxZoom: 21, zoomControl: false, preferCanvas: true, tap: false});
   L.control.zoom({position: 'topright'}).addTo(map);
   map.createPane('vec').style.zIndex = 350;
   map.createPane('labels').style.zIndex = 420; map.getPane('labels').style.pointerEvents = 'none';
@@ -149,7 +149,7 @@ function initMap() {
   // le icone a sprite (glicini, orti, giardini, monumentali) si rimpiccioliscono allontanandosi
   const mk = () => { const z = map.getZoom(); map.getContainer().style.setProperty('--mk', z <= 11 ? 0.35 : z === 12 ? 0.45 : z === 13 ? 0.6 : z === 14 ? 0.75 : z === 15 ? 0.9 : z === 16 ? 1.05 : z === 17 ? 1.2 : 1.4);
     // i glicini seguono la scala degli alberi: 16, 24 e 32 px agli zoom 17, 18 e 19 (icona base 32 px)
-    map.getContainer().style.setProperty('--mkt', z >= 20 ? 1.5 : z >= 19 ? 1 : z === 18 ? 0.75 : z === 17 ? 0.5 : z === 16 ? 0.34 : z === 15 ? 0.28 : 0.22); };
+    map.getContainer().style.setProperty('--mkt', z >= 21 ? 2 : z >= 20 ? 1.5 : z >= 19 ? 1 : z === 18 ? 0.75 : z === 17 ? 0.5 : z === 16 ? 0.34 : z === 15 ? 0.28 : 0.22); };
   map.on('zoomend', mk); mk();
   map.on('zoomend', updateHud);
 }
@@ -161,9 +161,9 @@ function setBasemap(key, style) {
   if (!key) { src('carto', 'Mappa di base CARTO', 'off', 'Serve una chiave gratuita: richiedila su carto.com/basemaps/apikey e scrivila in CFG.cartoKey (a_tables.js). Senza chiave la mappa mostra solo i dati.'); return; }
   const u = v => 'https://basemaps.cartocdn.com/rastertiles/' + v + '/{z}/{x}/{y}{r}.png?key=' + encodeURIComponent(key);
   // Positron senza etichette, ricolorata via filtro CSS (.base-tiles); etichette su un livello separato
-  baseTiles = L.tileLayer(u(style || 'light_nolabels'), {maxZoom: 20, maxNativeZoom: 18, className: 'base-tiles', attribution: att}).addTo(map);
-  // etichette solo fino al 18: CARTO non serve livelli oltre e ingrandite diventano sgranate
-  labelTiles = L.tileLayer(u('light_only_labels'), {maxZoom: 18, maxNativeZoom: 18, pane: 'labels', className: 'label-tiles'});
+  baseTiles = L.tileLayer(u(style || 'light_nolabels'), {maxZoom: 21, maxNativeZoom: 18, className: 'base-tiles', attribution: att}).addTo(map);
+  // etichette fino al 19: CARTO non serve livelli oltre il 18, più ingrandite diventano sgranate
+  labelTiles = L.tileLayer(u('light_only_labels'), {maxZoom: 19, maxNativeZoom: 18, pane: 'labels', className: 'label-tiles'});
   if (ST.on.nomi) labelTiles.addTo(map);
   let ok = 0, bad = 0;
   baseTiles.on('tileload', () => { if (++ok === 1) src('carto', 'Mappa di base CARTO', 'ok', 'Tasselli Positron (' + (style || 'light_nolabels') + ') con chiave.'); });
