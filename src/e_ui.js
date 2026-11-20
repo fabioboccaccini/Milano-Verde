@@ -215,6 +215,11 @@ function buildPanel() {
     '<label style="margin-top:10px">Chiave eBird (facoltativa)<input type="password" id="ebkey" placeholder="incolla la tua chiave API" autocomplete="off"></label><button class="btn sm" id="ebgo">Carica eBird</button><p class="note">La chiave è gratuita su ebird.org/api/keygen e resta solo in questo browser.</p>');
   layerRow('nil', 'CONFINI DEI QUARTIERI', '88 Nuclei di Identità Locale (NIL), base delle statistiche.', SPR.nil);
   layerRow('nomi', 'NOMI DI VIE E QUARTIERI', 'Etichette della mappa di base.', SPR.nomi);
+  // musica di sottofondo: spenta di default; se scelta, riparte al primo tocco (i browser vietano l'avvio automatico)
+  ST.on.musica = musicPref();
+  layerRow('musica', 'MUSICA', 'Sottofondo a 8 bit, composto per FogliaMI.', SPR.nota);
+  if (musicPref()) document.addEventListener('pointerdown', () => { if (musicPref() && !Chip.on) Chip.start(); }, {once: true, capture: true});
+  document.addEventListener('visibilitychange', () => { if (!Chip.ctx) return; if (document.hidden) Chip.ctx.suspend(); else if (Chip.on) Chip.ctx.resume(); });
   document.querySelectorAll('[data-ico]').forEach(c => c.getContext('2d').drawImage(SPR[c.dataset.ico], 0, 0));
   document.querySelectorAll('[data-grp]').forEach(c => { c.onchange = () => { FA.groups[c.dataset.grp] = c.checked; if (faunaLayer) faunaLayer.redraw(); }; });
   $('#c-orti').onchange = e => setLayer('orti', e.target.checked); $('#c-giardini').onchange = e => setLayer('giardini', e.target.checked);

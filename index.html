@@ -169,8 +169,6 @@ a{color:var(--water)}
 #lskip.ready{background:var(--lime);animation:blink .5s steps(1) infinite}
 #lskip.press{transform:translate(3px,3px);box-shadow:0 0 0 var(--leaf1);background:var(--sun);animation:none}
 @keyframes blink{50%{opacity:.35}}
-#lmusic{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;font-size:9px}
-#lmusic.on{background:var(--lime)}
 
 @media (max-width:760px){
   #bar h1{font-size:11px}#bar h1 small{font-size:8px;margin-left:10px;vertical-align:middle}
@@ -233,7 +231,6 @@ a{color:var(--water)}
   <div id="lpct">0%</div>
   <div id="lmsg">Preparo il terreno&hellip;</div>
   <button class="btn" id="lskip" disabled>Start</button>
-  <button class="btn sm" id="lmusic" aria-pressed="false">&#9834; Musica</button>
 </div>
 
 <header id="bar">
@@ -556,6 +553,11 @@ function buildSprites() {
   SPR.me = fromMap([
     '......kkkk......','.....kvvvvk.....','....kvvvvvvk....','....kwwwwwwk....','...kcclllccck...','..kccllllcccck..','..kcllllccccck..','..kcclcbbcccck..','..kcccccccccck..','..kcccccccccck..','..khcccccccchk..','kssshhcccchhsssk','kssssshhhhsssssk','kssssssssssssssk','.kssssssssssssk.','..kkkkkkkkkkkk..'],
     {k:K,v:'#8a2530',w:'#55141d',c:PAL.red,l:'#e8726f',b:PAL.sun,h:PAL.brown,s:PAL.water});
+  // nota musicale per l'interruttore della musica
+  SPR.nota = fromMap([
+    '................','.......kkk......','.......kyyk.....','.......kyyyk....','.......kykyyk...','.......kk.kyyk..','.......kk..kyk..','.......kk...kk..',
+    '.......kk.......','.......kk.......','...kkkkkk.......','..kyyyyyk.......','..kyyyyyk.......','..kyyyyk........','...kkkk.........','................'],
+    {k:K,y:PAL.sun});
   // cartello stradale per il livello dei nomi
   SPR.nomi = fromMap([
     '................','................','.kkkkkkkkkkkkkk.','.kbbbbbbbbbbbbk.','.kbbbwwbbwbbbbk.','.kbbwbbwbwbbbbk.','.kbbwbbwbwbbbbk.',
@@ -594,10 +596,11 @@ function sprIcon(c, px, cls) { return L.divIcon({className: 'spr-ico' + (cls ? '
    --------------------------------------------------------------------- */
 const Chip = {
   ctx: null, on: false, timer: 0, step: 0, next: 0, master: null, noise: null,
-  BPM: 132,
+  BPM: 120,
   // melodia (8 note per battuta, 4 battute) e basso; 0 = pausa. Frequenze in semitoni da La4 = 440 Hz
-  LEAD: [ 7,10,12,10, 7, 5, 3, 5,   7, 0, 7,10,12, 0,15, 0,  14,12,10, 7, 5, 7,10, 0,  12, 0,10, 7, 5, 3, 5, 0],
-  BASS: [-21,-21,-9,-21, -24,-24,-12,-24, -28,-28,-16,-28, -26,-26,-14,-26],
+  LEAD: [ 7,10,12,10, 7, 5, 3, 5,   7, 0, 7,10,12, 0,15, 0,  14,12,10, 7, 5, 7,10, 0,  12, 0,10, 7, 5, 3, 5, 0,
+         12, 0,12,10, 7, 0, 5, 7,  10, 0, 7, 5, 3, 0, 0, 0,   5, 7,10, 7, 5, 3, 5, 7,   3, 0, 0, 0, 0, 0, 0, 0],
+  BASS: [-21,-21,-9,-21, -24,-24,-12,-24, -28,-28,-16,-28, -26,-26,-14,-26,  -28,-28,-16,-28, -26,-26,-14,-26, -24,-24,-12,-24, -21,-21,-9,-21],
   hz(n) { return 440 * Math.pow(2, n / 12); },
   init() {
     if (this.ctx) return true;
@@ -617,9 +620,9 @@ const Chip = {
     const e = 60 / this.BPM / 2; this.next = this.ctx.currentTime + 0.05; this.step = 0;
     this.timer = setInterval(() => { // programma le note con un po' di anticipo, così il ritmo resta regolare
       while (this.next < this.ctx.currentTime + 0.12) {
-        const i = this.step % 32, n = this.LEAD[i];
+        const i = this.step % 64, n = this.LEAD[i];
         if (n) this.tone('square', this.hz(n), this.next, e * 0.9, 0.5);
-        if (i % 2 === 0) this.tone('triangle', this.hz(this.BASS[(i >> 1) % 16]), this.next, e * 1.8, 0.9);
+        if (i % 2 === 0) this.tone('triangle', this.hz(this.BASS[i >> 1]), this.next, e * 1.8, 0.9);
         if (i % 2 === 1) this.hat(this.next);
         this.next += e; this.step++;
       }
@@ -629,9 +632,9 @@ const Chip = {
     if (!this.on) return; this.on = false; clearInterval(this.timer);
     const t = this.ctx.currentTime; this.master.gain.setValueAtTime(this.master.gain.value, t); this.master.gain.linearRampToValueAtTime(0.0001, t + (fade || 0.05));
   },
-  jingle() { // START: arpeggio in salita e accordo finale
-    if (!this.ctx || this.ctx.state !== 'running') return;
-    this.stop(0.05); const t = this.ctx.currentTime + 0.08; this.master.gain.cancelScheduledValues(t - 0.02); this.master.gain.setValueAtTime(0.16, t - 0.01);
+  jingle() { // START: arpeggio in salita e accordo finale, solo se la musica è accesa
+    if (!musicPref() || !this.ctx || this.ctx.state !== 'running') return;
+    const wasOn = this.on; this.stop(0.05); if (wasOn) setTimeout(() => this.start(), 1200); const t = this.ctx.currentTime + 0.08; this.master.gain.cancelScheduledValues(t - 0.02); this.master.gain.setValueAtTime(0.16, t - 0.01);
     [3, 7, 10, 15].forEach((n, i) => this.tone('square', this.hz(n), t + i * 0.16, 0.12, 0.5));
     [15, 19, 22].forEach(n => this.tone('square', this.hz(n), t + 0.3, 0.45, 0.32)); this.tone('triangle', this.hz(-9), t + 0.3, 0.5, 0.9);
     this.master.gain.setValueAtTime(0.16, t + 0.8); this.master.gain.linearRampToValueAtTime(0.0001, t + 1.1);
@@ -792,10 +795,6 @@ const Loader = {
     const bar = $('#lbar'); for (let i = 0; i < 16; i++) bar.appendChild(document.createElement('i'));
     this.g = $('#plant').getContext('2d');
     $('#lskip').onclick = () => { Chip.jingle(); this.close(true); };
-    // musica: il pulsante la accende e spegne; se l'utente l'aveva scelta, riparte al primo tocco sulla schermata
-    const mb = $('#lmusic'), mset = on => { mb.classList.toggle('on', on); mb.setAttribute('aria-pressed', on); };
-    mb.onclick = e => { e.stopPropagation(); const on = !Chip.on; setMusicPref(on); mset(on); if (on) Chip.start(); else Chip.stop(0.2); };
-    if (musicPref()) { mset(true); $('#loader').addEventListener('pointerdown', () => { if (musicPref() && !Chip.on && !this.closed) Chip.start(); }, {once: true}); }
     setTimeout(() => { $('#lskip').disabled = false; }, 9000); // chi non vuole aspettare può entrare comunque
     const loop = t => {
       if (this.closed && this.shown >= 1 && performance.now() - this.tClose > 900) return;
@@ -823,7 +822,6 @@ const Loader = {
   },
   close(force) {
     if (this.closed) return; this.closed = true; this.tClose = performance.now(); if (force) this.shown = 1;
-    if (Chip.on) Chip.stop(0.8); // la musica sfuma quando si apre la mappa
     setTimeout(() => { $('#loader').classList.add('bye'); if (window.map) map.invalidateSize(); }, force ? 0 : 750);
   }
 };
@@ -1509,6 +1507,7 @@ function setLayer(key, on) {
   const l = LY[key];
   if (l) { if (on) l.addTo(map); else map.removeLayer(l); }
   if (key === 'nil' && on && LY.nil) LY.nil.bringToBack();
+  if (key === 'musica') { setMusicPref(on); if (on) Chip.start(); else Chip.stop(0.4); }
   if (key === 'nomi' && labelTiles) { if (on) labelTiles.addTo(map); else map.removeLayer(labelTiles); }
   if (key === 'alberi' && treeLayer) treeLayer.redraw();
   if (key === 'fauna' && faunaLayer) faunaLayer.redraw();
@@ -1760,6 +1759,11 @@ function buildPanel() {
     '<label style="margin-top:10px">Chiave eBird (facoltativa)<input type="password" id="ebkey" placeholder="incolla la tua chiave API" autocomplete="off"></label><button class="btn sm" id="ebgo">Carica eBird</button><p class="note">La chiave è gratuita su ebird.org/api/keygen e resta solo in questo browser.</p>');
   layerRow('nil', 'CONFINI DEI QUARTIERI', '88 Nuclei di Identità Locale (NIL), base delle statistiche.', SPR.nil);
   layerRow('nomi', 'NOMI DI VIE E QUARTIERI', 'Etichette della mappa di base.', SPR.nomi);
+  // musica di sottofondo: spenta di default; se scelta, riparte al primo tocco (i browser vietano l'avvio automatico)
+  ST.on.musica = musicPref();
+  layerRow('musica', 'MUSICA', 'Sottofondo a 8 bit, composto per FogliaMI.', SPR.nota);
+  if (musicPref()) document.addEventListener('pointerdown', () => { if (musicPref() && !Chip.on) Chip.start(); }, {once: true, capture: true});
+  document.addEventListener('visibilitychange', () => { if (!Chip.ctx) return; if (document.hidden) Chip.ctx.suspend(); else if (Chip.on) Chip.ctx.resume(); });
   document.querySelectorAll('[data-ico]').forEach(c => c.getContext('2d').drawImage(SPR[c.dataset.ico], 0, 0));
   document.querySelectorAll('[data-grp]').forEach(c => { c.onchange = () => { FA.groups[c.dataset.grp] = c.checked; if (faunaLayer) faunaLayer.redraw(); }; });
   $('#c-orti').onchange = e => setLayer('orti', e.target.checked); $('#c-giardini').onchange = e => setLayer('giardini', e.target.checked);

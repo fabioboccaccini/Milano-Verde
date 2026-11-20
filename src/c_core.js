@@ -107,10 +107,6 @@ const Loader = {
     const bar = $('#lbar'); for (let i = 0; i < 16; i++) bar.appendChild(document.createElement('i'));
     this.g = $('#plant').getContext('2d');
     $('#lskip').onclick = () => { Chip.jingle(); this.close(true); };
-    // musica: il pulsante la accende e spegne; se l'utente l'aveva scelta, riparte al primo tocco sulla schermata
-    const mb = $('#lmusic'), mset = on => { mb.classList.toggle('on', on); mb.setAttribute('aria-pressed', on); };
-    mb.onclick = e => { e.stopPropagation(); const on = !Chip.on; setMusicPref(on); mset(on); if (on) Chip.start(); else Chip.stop(0.2); };
-    if (musicPref()) { mset(true); $('#loader').addEventListener('pointerdown', () => { if (musicPref() && !Chip.on && !this.closed) Chip.start(); }, {once: true}); }
     setTimeout(() => { $('#lskip').disabled = false; }, 9000); // chi non vuole aspettare può entrare comunque
     const loop = t => {
       if (this.closed && this.shown >= 1 && performance.now() - this.tClose > 900) return;
@@ -138,7 +134,6 @@ const Loader = {
   },
   close(force) {
     if (this.closed) return; this.closed = true; this.tClose = performance.now(); if (force) this.shown = 1;
-    if (Chip.on) Chip.stop(0.8); // la musica sfuma quando si apre la mappa
     setTimeout(() => { $('#loader').classList.add('bye'); if (window.map) map.invalidateSize(); }, force ? 0 : 750);
   }
 };

@@ -157,8 +157,6 @@ a{color:var(--water)}
 #lskip.ready{background:var(--lime);animation:blink .5s steps(1) infinite}
 #lskip.press{transform:translate(3px,3px);box-shadow:0 0 0 var(--leaf1);background:var(--sun);animation:none}
 @keyframes blink{50%{opacity:.35}}
-#lmusic{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;font-size:9px}
-#lmusic.on{background:var(--lime)}
 
 @media (max-width:760px){
   #bar h1{font-size:11px}#bar h1 small{font-size:8px;margin-left:10px;vertical-align:middle}

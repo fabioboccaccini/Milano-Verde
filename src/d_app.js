@@ -359,6 +359,7 @@ function setLayer(key, on) {
   const l = LY[key];
   if (l) { if (on) l.addTo(map); else map.removeLayer(l); }
   if (key === 'nil' && on && LY.nil) LY.nil.bringToBack();
+  if (key === 'musica') { setMusicPref(on); if (on) Chip.start(); else Chip.stop(0.4); }
   if (key === 'nomi' && labelTiles) { if (on) labelTiles.addTo(map); else map.removeLayer(labelTiles); }
   if (key === 'alberi' && treeLayer) treeLayer.redraw();
   if (key === 'fauna' && faunaLayer) faunaLayer.redraw();

@@ -135,6 +135,11 @@ function buildSprites() {
   SPR.me = fromMap([
     '......kkkk......','.....kvvvvk.....','....kvvvvvvk....','....kwwwwwwk....','...kcclllccck...','..kccllllcccck..','..kcllllccccck..','..kcclcbbcccck..','..kcccccccccck..','..kcccccccccck..','..khcccccccchk..','kssshhcccchhsssk','kssssshhhhsssssk','kssssssssssssssk','.kssssssssssssk.','..kkkkkkkkkkkk..'],
     {k:K,v:'#8a2530',w:'#55141d',c:PAL.red,l:'#e8726f',b:PAL.sun,h:PAL.brown,s:PAL.water});
+  // nota musicale per l'interruttore della musica
+  SPR.nota = fromMap([
+    '................','.......kkk......','.......kyyk.....','.......kyyyk....','.......kykyyk...','.......kk.kyyk..','.......kk..kyk..','.......kk...kk..',
+    '.......kk.......','.......kk.......','...kkkkkk.......','..kyyyyyk.......','..kyyyyyk.......','..kyyyyk........','...kkkk.........','................'],
+    {k:K,y:PAL.sun});
   // cartello stradale per il livello dei nomi
   SPR.nomi = fromMap([
     '................','................','.kkkkkkkkkkkkkk.','.kbbbbbbbbbbbbk.','.kbbbwwbbwbbbbk.','.kbbwbbwbwbbbbk.','.kbbwbbwbwbbbbk.',
@@ -173,10 +178,11 @@ function sprIcon(c, px, cls) { return L.divIcon({className: 'spr-ico' + (cls ? '
    --------------------------------------------------------------------- */
 const Chip = {
   ctx: null, on: false, timer: 0, step: 0, next: 0, master: null, noise: null,
-  BPM: 132,
+  BPM: 120,
   // melodia (8 note per battuta, 4 battute) e basso; 0 = pausa. Frequenze in semitoni da La4 = 440 Hz
-  LEAD: [ 7,10,12,10, 7, 5, 3, 5,   7, 0, 7,10,12, 0,15, 0,  14,12,10, 7, 5, 7,10, 0,  12, 0,10, 7, 5, 3, 5, 0],
-  BASS: [-21,-21,-9,-21, -24,-24,-12,-24, -28,-28,-16,-28, -26,-26,-14,-26],
+  LEAD: [ 7,10,12,10, 7, 5, 3, 5,   7, 0, 7,10,12, 0,15, 0,  14,12,10, 7, 5, 7,10, 0,  12, 0,10, 7, 5, 3, 5, 0,
+         12, 0,12,10, 7, 0, 5, 7,  10, 0, 7, 5, 3, 0, 0, 0,   5, 7,10, 7, 5, 3, 5, 7,   3, 0, 0, 0, 0, 0, 0, 0],
+  BASS: [-21,-21,-9,-21, -24,-24,-12,-24, -28,-28,-16,-28, -26,-26,-14,-26,  -28,-28,-16,-28, -26,-26,-14,-26, -24,-24,-12,-24, -21,-21,-9,-21],
   hz(n) { return 440 * Math.pow(2, n / 12); },
   init() {
     if (this.ctx) return true;
@@ -196,9 +202,9 @@ const Chip = {
     const e = 60 / this.BPM / 2; this.next = this.ctx.currentTime + 0.05; this.step = 0;
     this.timer = setInterval(() => { // programma le note con un po' di anticipo, così il ritmo resta regolare
       while (this.next < this.ctx.currentTime + 0.12) {
-        const i = this.step % 32, n = this.LEAD[i];
+        const i = this.step % 64, n = this.LEAD[i];
         if (n) this.tone('square', this.hz(n), this.next, e * 0.9, 0.5);
-        if (i % 2 === 0) this.tone('triangle', this.hz(this.BASS[(i >> 1) % 16]), this.next, e * 1.8, 0.9);
+        if (i % 2 === 0) this.tone('triangle', this.hz(this.BASS[i >> 1]), this.next, e * 1.8, 0.9);
         if (i % 2 === 1) this.hat(this.next);
         this.next += e; this.step++;
       }
@@ -208,9 +214,9 @@ const Chip = {
     if (!this.on) return; this.on = false; clearInterval(this.timer);
     const t = this.ctx.currentTime; this.master.gain.setValueAtTime(this.master.gain.value, t); this.master.gain.linearRampToValueAtTime(0.0001, t + (fade || 0.05));
   },
-  jingle() { // START: arpeggio in salita e accordo finale
-    if (!this.ctx || this.ctx.state !== 'running') return;
-    this.stop(0.05); const t = this.ctx.currentTime + 0.08; this.master.gain.cancelScheduledValues(t - 0.02); this.master.gain.setValueAtTime(0.16, t - 0.01);
+  jingle() { // START: arpeggio in salita e accordo finale, solo se la musica è accesa
+    if (!musicPref() || !this.ctx || this.ctx.state !== 'running') return;
+    const wasOn = this.on; this.stop(0.05); if (wasOn) setTimeout(() => this.start(), 1200); const t = this.ctx.currentTime + 0.08; this.master.gain.cancelScheduledValues(t - 0.02); this.master.gain.setValueAtTime(0.16, t - 0.01);
     [3, 7, 10, 15].forEach((n, i) => this.tone('square', this.hz(n), t + i * 0.16, 0.12, 0.5));
     [15, 19, 22].forEach(n => this.tone('square', this.hz(n), t + 0.3, 0.45, 0.32)); this.tone('triangle', this.hz(-9), t + 0.3, 0.5, 0.9);
     this.master.gain.setValueAtTime(0.16, t + 0.8); this.master.gain.linearRampToValueAtTime(0.0001, t + 1.1);
