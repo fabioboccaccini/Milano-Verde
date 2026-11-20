@@ -110,7 +110,9 @@ const Loader = {
     const loop = t => {
       if (this.closed && this.shown >= 1 && performance.now() - this.tClose > 900) return;
       const target = this.total ? this.done / this.total : 0;
-      this.shown += (target - this.shown) * 0.09; if (target - this.shown < 0.004) this.shown = target;
+      // la barra (e il ciliegio) non va più veloce di un ciclo completo in 6 secondi, così le stagioni si vedono
+      const dt = this.lastT ? t - this.lastT : 16; this.lastT = t;
+      this.shown += Math.min((target - this.shown) * 0.09, dt / 6000); if (target - this.shown < 0.004 && target - this.shown < dt / 6000) this.shown = target;
       drawPlant(this.g, this.shown, t);
       const pct = Math.round(this.shown * 100); $('#lpct').textContent = pct + '%';
       const cells = $('#lbar').children; for (let i = 0; i < cells.length; i++) cells[i].className = (i < Math.round(this.shown * cells.length)) ? 'on' : '';
