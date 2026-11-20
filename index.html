@@ -1685,24 +1685,46 @@ function buildPanel() {
 /* Geolocalizzazione: la posizione resta nel browser, non viene inviata a nessuna fonte */
 let meMarker = null, meCircle = null, _msgT = 0;
 function hudMsg(t) { let el = $('#hudmsg'); if (!el) { el = document.createElement('div'); el.id = 'hudmsg'; el.className = 'hudbox'; $('#hud').prepend(el); } el.textContent = t; clearTimeout(_msgT); _msgT = setTimeout(() => el.remove(), t.length > 60 ? 12000 : 6000); }
+/* Posizione: inseguimento continuo con watchPosition. La prima posizione è spesso una stima da Wi-Fi e celle;
+   quelle successive arrivano dal GPS e il cerchio di incertezza si stringe. La mappa segue finché non la si trascina. */
+let meWatch = null, meFollow = false, meFirst = true, meBest = Infinity, meNil = -1, meWarnT = 0, meStopT = 0;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function meUnfollow() { meFollow = false; }
+function stopLocate(msg) {
+  if (meWatch !== null) navigator.geolocation.clearWatch(meWatch); meWatch = null;
+  if (meMarker) { map.removeLayer(meMarker); map.removeLayer(meCircle); meMarker = meCircle = null; }
+  clearTimeout(meWarnT); clearTimeout(meStopT); map.off('dragstart', meUnfollow); $('#bgeo').classList.remove('on');
+  if (msg) hudMsg(msg);
+}
 function locateMe() {
-  const b = $('#bgeo');
   if (!navigator.geolocation) { hudMsg('QUESTO BROWSER NON OFFRE LA POSIZIONE'); return; }
-  b.classList.add('on'); if (isMobile()) togglePanel(false);
-  navigator.geolocation.getCurrentPosition(p => {
-    b.classList.remove('on');
-    const ll = [p.coords.latitude, p.coords.longitude], acc = p.coords.accuracy || 0;
-    if (meMarker) { map.removeLayer(meMarker); map.removeLayer(meCircle); }
+  if (meWatch !== null) { stopLocate('POSIZIONE SPENTA'); return; }
+  $('#bgeo').classList.add('on'); if (isMobile()) togglePanel(false);
+  meFollow = true; meFirst = true; meBest = Infinity; meNil = -1; map.on('dragstart', meUnfollow);
+  hudMsg('CERCO LA POSIZIONE…');
+  meWatch = navigator.geolocation.watchPosition(onMyPos, onMyPosErr, {enableHighAccuracy: true, maximumAge: 0, timeout: 30000});
+  // dopo qualche secondo una precisione oltre il chilometro vuol dire posizione approssimata per scelta del sistema
+  meWarnT = setTimeout(() => { if (meWatch !== null && meBest > 1000 && isFinite(meBest)) hudMsg('POSIZIONE MOLTO APPROSSIMATA (±' + fmt(meBest / 1000, 1) + ' KM). ' +
+    (isIOS() ? 'SU IPHONE: IMPOSTAZIONI › PRIVACY E SICUREZZA › LOCALIZZAZIONE › SITI WEB DI SAFARI › ATTIVA «POSIZIONE ESATTA»' : 'CONTROLLA CHE LA POSIZIONE PRECISA SIA CONSENTITA AL BROWSER')); }, 9000);
+  meStopT = setTimeout(() => stopLocate('POSIZIONE SPENTA DOPO 20 MINUTI, PER RISPARMIARE BATTERIA'), 20 * 60000);
+}
+function onMyPos(p) {
+  const ll = [p.coords.latitude, p.coords.longitude], acc = p.coords.accuracy || 0, prev = meBest; meBest = Math.min(meBest, acc);
+  if (!meMarker) {
     meCircle = L.circle(ll, {radius: acc, pane: 'vec', color: PAL.water, weight: 2, dashArray: '4 4', fillColor: PAL.sky, fillOpacity: 0.18, interactive: false}).addTo(map);
     meMarker = L.marker(ll, {icon: L.divIcon({className: 'me-ico', iconSize: [20, 20], iconAnchor: [10, 10], html: '<i></i>'}), zIndexOffset: 1000, interactive: false}).addTo(map);
-    const nid = NIL.list.length ? nilOf(ll[1], ll[0]) : 0;
-    map.setView(ll, Math.max(map.getZoom(), acc > 300 ? 15 : 17));
-    hudMsg(nid ? 'SEI A ' + NIL.byId[nid].name.toUpperCase() + ' (±' + Math.round(acc) + ' M)' : 'SEI FUORI DAL COMUNE DI MILANO');
-  }, e => {
-    b.classList.remove('on');
-    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    hudMsg(e.code === 1 ? (ios ? 'POSIZIONE NEGATA. SU IPHONE: IMPOSTAZIONI › PRIVACY E SICUREZZA › LOCALIZZAZIONE › SITI WEB DI SAFARI, POI RICARICA' : 'POSIZIONE NEGATA: CONSENTILA PER QUESTO SITO DALLE IMPOSTAZIONI DEL BROWSER, POI RICARICA') : e.code === 3 ? 'POSIZIONE NON ARRIVATA IN TEMPO' : 'POSIZIONE NON DISPONIBILE');
-  }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 30000});
+  } else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(acc); }
+  const nid = NIL.list.length ? nilOf(ll[1], ll[0]) : 0;
+  if (meFirst) { meFirst = false; map.setView(ll, Math.max(map.getZoom(), acc > 300 ? 15 : 17)); }
+  else if (meFollow) {
+    // quando il GPS si aggancia (da oltre 300 m a meno di 50) avvicino la vista una volta
+    if (prev > 300 && acc <= 50 && map.getZoom() < 17) map.setView(ll, 17); else map.panTo(ll, {animate: true, duration: 0.5});
+  }
+  if (nid !== meNil || (prev > 100 && acc <= 30)) { meNil = nid; hudMsg(nid ? 'SEI A ' + NIL.byId[nid].name.toUpperCase() + ' (±' + Math.round(acc) + ' M)' : 'SEI FUORI DAL COMUNE DI MILANO'); }
+}
+function onMyPosErr(e) {
+  if (e.code === 1) { stopLocate(e.code === 1 && isIOS() ? 'POSIZIONE NEGATA. SU IPHONE: IMPOSTAZIONI › PRIVACY E SICUREZZA › LOCALIZZAZIONE › SITI WEB DI SAFARI, POI RICARICA' : 'POSIZIONE NEGATA: CONSENTILA PER QUESTO SITO DALLE IMPOSTAZIONI DEL BROWSER, POI RICARICA'); return; }
+  if (!meMarker) hudMsg(e.code === 3 ? 'LA POSIZIONE TARDA AD ARRIVARE: SE SEI AL CHIUSO, PROVA VICINO A UNA FINESTRA' : 'POSIZIONE NON DISPONIBILE, RIPROVO…');
 }
 function showTab(t) { [...$('#tabs').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 't-' + t)); if (t === 'incroci') refreshScatter(); togglePanel(true); }
 function togglePanel(open) { const p = $('#panel'), o = open == null ? p.classList.contains('closed') : open; p.classList.toggle('closed', !o); $('#bpanel').classList.toggle('on', o); }
