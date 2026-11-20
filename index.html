@@ -753,7 +753,8 @@ function setBasemap(key, style) {
   const u = v => 'https://basemaps.cartocdn.com/rastertiles/' + v + '/{z}/{x}/{y}{r}.png?key=' + encodeURIComponent(key);
   // Positron senza etichette, ricolorata via filtro CSS (.base-tiles); etichette su un livello separato
   baseTiles = L.tileLayer(u(style || 'light_nolabels'), {maxZoom: 20, maxNativeZoom: 18, className: 'base-tiles', attribution: att}).addTo(map);
-  labelTiles = L.tileLayer(u('light_only_labels'), {maxZoom: 20, maxNativeZoom: 18, pane: 'labels', className: 'label-tiles'});
+  // etichette solo fino al 18: CARTO non serve livelli oltre e ingrandite diventano sgranate
+  labelTiles = L.tileLayer(u('light_only_labels'), {maxZoom: 18, maxNativeZoom: 18, pane: 'labels', className: 'label-tiles'});
   if (ST.on.nomi) labelTiles.addTo(map);
   let ok = 0, bad = 0;
   baseTiles.on('tileload', () => { if (++ok === 1) src('carto', 'Mappa di base CARTO', 'ok', 'Tasselli Positron (' + (style || 'light_nolabels') + ') con chiave.'); });
