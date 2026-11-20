@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       wikipedia:
-        description: 'Aggiorna anche le schede di Wikipedia (circa 15 minuti)'
+        description: 'Aggiorna anche le schede di Wikipedia di piante e animali (circa 40 minuti)'
         type: boolean
         default: false
 
@@ -18,7 +18,7 @@ permissions:
 jobs:
   aggiorna:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -38,12 +38,14 @@ jobs:
       - name: Schede di Wikipedia, a richiesta
         continue-on-error: true
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.wikipedia }}
-        run: python3 tools/wiki_species.py
+        run: |
+          python3 tools/wiki_species.py
+          python3 tools/wiki_fauna.py
       - name: Schede di Wikipedia, gennaio aprile luglio ottobre
         continue-on-error: true
         if: ${{ github.event_name == 'schedule' }}
         run: |
-          case "$(date -u +%m)" in 01|04|07|10) python3 tools/wiki_species.py ;; *) echo "non è un mese di aggiornamento" ;; esac
+          case "$(date -u +%m)" in 01|04|07|10) python3 tools/wiki_species.py; python3 tools/wiki_fauna.py ;; *) echo "non è un mese di aggiornamento" ;; esac
 
       - name: Salva i file cambiati
         run: |

@@ -174,7 +174,7 @@ function faunaPopup(o) {
   const srcL = {inat: 'iNaturalist', gbif: 'GBIF', ebird: 'eBird (via GBIF)'}[o.src], nil = NIL.byId[o.nil], w = wikiFaunaOf(o.sci);
   // la foto dell'osservatore, se c'è, resta la principale; altrimenti quella della voce di Wikipedia
   return '<div class="pop"><h3>' + esc((o.name || o.sci || 'Animale').toUpperCase()) + '</h3>' + (o.sci ? '<div class="sci">' + esc(o.sci) + '</div>' : '') +
-    (o.img ? '<img loading="lazy" src="' + esc(o.img) + '" alt="">' : wikiPhoto(w)) +
+    (o.img ? '<figure class="wk"><img loading="lazy" src="' + esc(o.img) + '" alt=""></figure>' : wikiPhoto(w)) +
     '<table><tr><td>Gruppo</td><td>' + GR_LBL[o.grp] + '</td></tr>' + (o.date ? '<tr><td>Data</td><td>' + esc(o.date) + '</td></tr>' : '') +
     (nil ? '<tr><td>Quartiere</td><td>' + esc(nil.name) + '</td></tr>' : '') + (o.who ? '<tr><td>Osservatore</td><td>' + esc(o.who) + '</td></tr>' : '') +
     (o.ds ? '<tr><td>Dataset</td><td>' + esc(o.ds) + '</td></tr>' : '') + '</table>' + wikiText(w) +
