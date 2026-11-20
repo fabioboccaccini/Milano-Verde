@@ -352,7 +352,7 @@ function renderStatic() {
    ===================================================================== */
 async function main() {
   Loader.init(); buildSprites();
-  if (typeof L === 'undefined') { Loader.msg('Non riesco a caricare la libreria della mappa (Leaflet). Serve una connessione a internet.'); return; }
+  if (typeof L === 'undefined') { Loader.msg('Non riesco a caricare la libreria della mappa (Leaflet). Serve una connessione a internet.', true); return; }
   initMap(); renderStatic(); buildPanel();
   treeLayer = new SpriteLayer(drawTrees).addTo(map); faunaLayer = new SpriteLayer(drawFauna).addTo(map);
   src('nil', 'Confini dei NIL', 'wait', ''); src('pop', 'Residenti per NIL', 'wait', ''); src('parchi', 'Parchi e giardini', 'wait', ''); src('orti', 'Orti urbani', 'wait', ''); src('giardini', 'Giardini condivisi', 'wait', '');
@@ -400,7 +400,7 @@ async function main() {
   // la mappa si apre quando i livelli di base sono pronti; alberi e fauna possono proseguire dietro
   const treesSoon = Promise.race([firstTrees, sleep(14000)]), faunaSoon = Promise.race([pFauna, sleep(9000)]);
   await Promise.all([pPop, pIdx, pParchi, pOrti, pGiard, pMon, treesSoon, faunaSoon]);
-  clearTimeout(hard); Loader.msg('Pronto!'); Loader.finish();
+  clearTimeout(hard); Loader.finish();
   setMode('none');
   setTimeout(() => locateMe(true), 1900); // dopo la chiusura della schermata di caricamento (START si preme da solo)
   fetchJSON(CFG.wiki, {timeout: 30000}).then(j => { WIKI = j.species || null; const n = WIKI ? Object.keys(WIKI).length : 0;

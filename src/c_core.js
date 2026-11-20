@@ -101,8 +101,9 @@ function renderSources() {
    SCHERMATA DI CARICAMENTO
    ===================================================================== */
 const Loader = {
-  total: 0, done: 0, shown: 0, closed: false, t0: performance.now(),
+  total: 0, done: 0, shown: 0, closed: false, t0: performance.now(), queue: [],
   init() {
+    this.msg('Preparo il terreno…', true);
     const bar = $('#lbar'); for (let i = 0; i < 16; i++) bar.appendChild(document.createElement('i'));
     this.g = $('#plant').getContext('2d');
     $('#lskip').onclick = () => this.close(true);
@@ -110,9 +111,11 @@ const Loader = {
     const loop = t => {
       if (this.closed && this.shown >= 1 && performance.now() - this.tClose > 900) return;
       const target = this.total ? this.done / this.total : 0;
-      // la barra (e il ciliegio) non va più veloce di un ciclo completo in 6 secondi, così le stagioni si vedono
-      const dt = this.lastT ? t - this.lastT : 16; this.lastT = t;
-      this.shown += Math.min((target - this.shown) * 0.09, dt / 6000); if (target - this.shown < 0.004 && target - this.shown < dt / 6000) this.shown = target;
+      // la barra (e il ciliegio) non va più veloce di un ciclo completo in 4,5 secondi, così le stagioni si vedono
+      const dt = this.lastT ? t - this.lastT : 16, SPAN = 4500; this.lastT = t;
+      this.shown += Math.min((target - this.shown) * 0.09, dt / SPAN); if (target - this.shown < 0.004 && target - this.shown < dt / SPAN) this.shown = target;
+      // i messaggi compaiono quando la barra arriva al punto in cui sono stati scritti, non prima
+      while (this.queue.length && this.queue[0].at <= this.shown + 0.001) { const el = $('#lmsg'); if (el) el.textContent = this.queue.shift().m; }
       drawPlant(this.g, this.shown, t);
       const pct = Math.round(this.shown * 100); $('#lpct').textContent = pct + '%';
       const cells = $('#lbar').children; for (let i = 0; i < cells.length; i++) cells[i].className = (i < Math.round(this.shown * cells.length)) ? 'on' : '';
@@ -122,8 +125,8 @@ const Loader = {
     requestAnimationFrame(loop);
   },
   task(label, w) { this.total += w; const self = this; let fin = false; return {end(msg) { if (fin) return; fin = true; self.done += w; self.msg(msg || label); }}; },
-  msg(m) { const el = $('#lmsg'); if (el) el.textContent = m; },
-  finish() { this.ready = true; this.done = this.total; },
+  msg(m, now) { if (now) { const el = $('#lmsg'); if (el) el.textContent = m; return; } this.queue.push({at: this.total ? this.done / this.total : 0, m}); this.queue.sort((a, b) => a.at - b.at); },
+  finish() { this.ready = true; this.done = this.total; this.queue.push({at: 1, m: 'Pronto!'}); },
   // a caricamento completo START lampeggia, poi si preme da solo
   autoStart() {
     this.pressing = true; const b = $('#lskip'); b.disabled = false; b.classList.add('ready');
