@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PROVA · Milano Verde · flora e fauna della città</title>
+<meta name="description" content="Mappa interattiva di alberi, verde e fauna di Milano, costruita su dati aperti letti in diretta.">
+<!-- Dipendenze esterne: Leaflet (mappa) e un font pixel per i titoli. Tutto il resto è in questo file. -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1b1c2e;--night:#2a2d4a;--slate:#4a5273;--fog:#8b93b5;
+  --paper:#f2ecd8;--sand:#e0d3a8;--white:#fffdf4;
+  --leaf1:#1f5c3a;--leaf2:#3a8f4b;--leaf3:#7cc35a;--lime:#c4e86b;
+  --water:#3f7fbf;--sky:#8fd0e8;--sun:#f6c644;--orange:#e8853a;
+  --red:#c9413f;--pink:#f09ac0;--violet:#8f6ad0;--brown:#7a4b2b;
+  --px:"Press Start 2P","Courier New",monospace;
+  --tx:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--ink);font-family:var(--tx);font-size:15px;line-height:1.45}
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+button,select,input{font:inherit;color:inherit}
+canvas.pix,img.pix{image-rendering:pixelated;image-rendering:crisp-edges}
+
+/* barra superiore */
+#bar{display:flex;align-items:center;gap:10px;background:var(--ink);color:var(--paper);padding:8px 10px;border-bottom:4px solid var(--leaf2);flex:0 0 auto;z-index:1200}
+#bar h1{font-family:var(--px);font-size:14px;margin:0;letter-spacing:1px;color:var(--lime);text-shadow:2px 2px 0 var(--leaf1);white-space:nowrap}
+#bar h1 small{color:var(--sun);font-size:8px;margin-left:6px;text-shadow:none}
+#bar .sp{flex:1}
+.btn{font-family:var(--px);font-size:9px;line-height:1;padding:10px 10px;min-height:38px;background:var(--paper);color:var(--ink);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--leaf1);cursor:pointer;text-transform:uppercase;border-radius:0}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--leaf1)}
+.btn.on{background:var(--lime)}
+.btn.sm{font-size:8px;padding:8px;min-height:32px}
+#bar .btn{box-shadow:3px 3px 0 var(--leaf2)}
+
+main{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
+#map{position:absolute;inset:0;background:#dfe6cf}
+.leaflet-container{font-family:var(--tx);background:#dfe6cf}
+.base-tiles{filter:sepia(.55) hue-rotate(38deg) saturate(1.5) brightness(.97) contrast(.98)}
+.label-tiles{filter:contrast(1.25) brightness(.72);opacity:.85}
+.sprite-canvas{position:absolute;left:0;top:0;pointer-events:none}
+.leaflet-control-attribution{font-size:10px;background:rgba(242,236,216,.9)!important}
+.leaflet-bar a{border-radius:0!important;background:var(--paper);color:var(--ink);border:2px solid var(--ink)!important;font-family:var(--px);font-size:12px;width:36px!important;height:36px!important;line-height:32px!important}
+.leaflet-bar{border:0!important;box-shadow:3px 3px 0 var(--ink)!important;border-radius:0!important}
+.leaflet-popup-content-wrapper{border-radius:0;border:3px solid var(--ink);box-shadow:4px 4px 0 rgba(27,28,46,.55);background:var(--white);color:var(--ink)}
+.leaflet-popup-tip{border-radius:0;background:var(--white);border:2px solid var(--ink)}
+.leaflet-popup-content{margin:12px 14px;font-size:14px;line-height:1.4;min-width:200px}
+.leaflet-container a.leaflet-popup-close-button{font-size:22px;width:32px;height:32px;line-height:30px;color:var(--ink)}
+.pop h3{font-family:var(--px);font-size:10px;line-height:1.5;margin:0 22px 6px 0;color:var(--leaf1)}
+.pop .sci{font-style:italic;color:var(--slate)}
+.pop table{border-collapse:collapse;width:100%;margin-top:6px}
+.pop td{padding:2px 0;vertical-align:top;border-top:1px dotted var(--sand)}
+.pop td:first-child{color:var(--slate);padding-right:10px;white-space:nowrap}
+.pop img{max-width:100%;display:block;margin:6px 0;border:2px solid var(--ink)}
+.pop .tag{display:inline-block;font-family:var(--px);font-size:7px;padding:3px 5px;margin:4px 4px 0 0;border:2px solid var(--ink);background:var(--lime)}
+.pop .tag.a3{background:var(--red);color:#fff}.pop .tag.a2{background:var(--orange)}.pop .tag.a1{background:var(--sun)}.pop .tag.fl{background:var(--pink)}
+.pop small{color:var(--slate)}
+.nil-tip{background:var(--ink);color:var(--paper);border:0;border-radius:0;font-family:var(--px);font-size:8px;padding:5px 6px;box-shadow:2px 2px 0 var(--leaf2)}
+.nil-tip:before{display:none}
+.spr-ico{background:none;border:0}
+.spr-ico img{transform:scale(var(--mk,1));transform-origin:50% 100%}
+.spr-ico.as-tree img{transform:scale(var(--mkt,1))}
+
+/* pannello */
+#panel{position:absolute;left:0;top:0;bottom:0;width:348px;max-width:92vw;background:var(--paper);border-right:4px solid var(--ink);z-index:1100;display:flex;flex-direction:column;transition:transform .18s steps(4),visibility 0s}
+/* da chiuso il pannello sparisce del tutto: su iPhone il bordo restava visibile sotto la barra di Safari */
+#panel.closed{transform:translateX(-102%);visibility:hidden;transition:transform .18s steps(4),visibility 0s .18s}
+#tabs{display:flex;background:var(--ink);padding:6px 6px 0;gap:4px;flex:0 0 auto}
+#tabs button{flex:1;font-family:var(--px);font-size:8px;padding:9px 2px;min-height:36px;border:3px solid var(--ink);border-bottom:0;background:var(--slate);color:var(--paper);cursor:pointer;border-radius:0}
+#tabs button.on{background:var(--paper);color:var(--ink)}
+.tab{display:none;overflow:auto;padding:12px;flex:1 1 auto;-webkit-overflow-scrolling:touch}
+.tab.on{display:block}
+h2{font-family:var(--px);font-size:10px;margin:16px 0 8px;color:var(--leaf1);line-height:1.5}
+h2:first-child{margin-top:2px}
+p{margin:6px 0}
+.note{font-size:12.5px;color:var(--slate);margin:4px 0 0}
+.warn{font-size:12.5px;background:#fff3c9;border:2px solid var(--ink);border-left:8px solid var(--sun);padding:6px 8px;margin:8px 0}
+.box{border:3px solid var(--ink);background:var(--white);padding:8px 10px;margin:8px 0;box-shadow:3px 3px 0 var(--sand)}
+.lay{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:2px dotted var(--sand)}
+.lay canvas{width:32px;height:32px}
+.lay b{font-family:var(--px);font-size:8.5px;line-height:1.5;display:block}
+.lay span{font-size:12px;color:var(--slate);display:block}
+.sw{appearance:none;-webkit-appearance:none;width:44px;height:26px;border:3px solid var(--ink);background:var(--fog);position:relative;cursor:pointer;margin:0;border-radius:0;flex:none}
+.sw:after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;background:var(--paper);border:2px solid var(--ink)}
+.sw:checked{background:var(--leaf3)}
+.sw:checked:after{left:20px}
+.sub{padding:6px 0 8px 42px;border-bottom:2px dotted var(--sand);font-size:13px}
+.sub label{display:block;margin:4px 0}
+.sub select,.sub input[type=text],.sub input[type=password],select.full{width:100%;padding:7px 6px;border:3px solid var(--ink);background:var(--white);border-radius:0;min-height:38px;margin:3px 0}
+.chk{display:flex;gap:8px;align-items:center;margin:5px 0;font-size:13px}
+.chk input{width:20px;height:20px;accent-color:var(--leaf2);flex:none}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.modes .btn{width:100%;text-align:left;line-height:1.5;font-size:8px;padding:9px 8px}
+.modes .btn.on{background:var(--sun)}
+#modeui{margin-top:16px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;margin:4px 0}
+input[type=range]::-webkit-slider-runnable-track{height:10px;background:var(--leaf1);border:3px solid var(--ink)}
+input[type=range]::-moz-range-track{height:10px;background:var(--leaf1);border:3px solid var(--ink)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:26px;margin-top:-11px;background:var(--sun);border:3px solid var(--ink);border-radius:0;cursor:pointer}
+input[type=range]::-moz-range-thumb{width:16px;height:20px;background:var(--sun);border:3px solid var(--ink);border-radius:0;cursor:pointer}
+.months{display:grid;grid-template-columns:repeat(12,1fr);font-family:var(--px);font-size:7px;text-align:center;color:var(--slate)}
+.months i{font-style:normal;padding:2px 0}.months i.on{background:var(--ink);color:var(--sun)}
+.bigm{font-family:var(--px);font-size:12px;color:var(--ink);margin:6px 0 2px}
+.lg{list-style:none;margin:6px 0;padding:0;font-size:13px}
+.lg li{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:default}
+.lg li i{width:14px;height:14px;border:2px solid var(--ink);flex:none;display:inline-block}
+.lg li em{margin-left:auto;font-style:normal;color:var(--slate);font-variant-numeric:tabular-nums}
+.lg li.clk{cursor:pointer}.lg li.clk:hover{background:var(--sand)}
+.rank{list-style:none;margin:8px 0;padding:0;counter-reset:r}
+.rank li{counter-increment:r;display:grid;grid-template-columns:26px 1fr auto;gap:6px;align-items:center;padding:5px 2px;border-bottom:1px dotted var(--sand);cursor:pointer;font-size:13px}
+.rank li:before{content:counter(r);font-family:var(--px);font-size:8px;color:var(--slate)}
+.rank li:hover{background:var(--sand)}
+.rank li .nm{overflow:hidden}
+.rank li .bar{height:8px;background:var(--leaf2);border:2px solid var(--ink);margin-top:3px;min-width:3px}
+.rank li .v{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.rank li.ex{opacity:.55}
+.kpi{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.kpi div{border:3px solid var(--ink);background:var(--white);padding:6px 8px}
+.kpi b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+.kpi span{font-size:11.5px;color:var(--slate)}
+#scatter{width:100%;height:220px;border:3px solid var(--ink);background:var(--white);display:block;touch-action:none}
+.src{font-size:12.5px;border-collapse:collapse;width:100%}
+.src td{padding:5px 4px;border-bottom:1px dotted var(--sand);vertical-align:top}
+.src .st{font-family:var(--px);font-size:7px;white-space:nowrap}
+.st.ok{color:var(--leaf2)}.st.err{color:var(--red)}.st.wait{color:var(--slate)}.st.part{color:var(--orange)}
+a{color:var(--water)}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl td,.tbl th{padding:3px 4px;border-bottom:1px dotted var(--sand);text-align:left}
+.tbl td:last-child,.tbl th:last-child{text-align:right;font-variant-numeric:tabular-nums}
+
+/* HUD e legenda sulla mappa */
+#hud{position:absolute;right:10px;bottom:26px;z-index:1000;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:none}
+.hudbox{background:var(--ink);color:var(--paper);font-family:var(--px);font-size:8px;padding:7px 8px;border:3px solid var(--paper);box-shadow:3px 3px 0 var(--ink);max-width:250px;line-height:1.6}
+.hudbar{height:8px;background:var(--night);border:2px solid var(--paper);margin-top:5px;width:170px}
+.hudbar i{display:block;height:100%;background:var(--lime);width:0}
+#legend{position:absolute;left:358px;bottom:26px;z-index:1000;background:var(--paper);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:8px 10px;font-size:12px;max-width:260px;transition:left .18s steps(4)}
+#panel.closed ~ #legend{left:10px}
+#legend b{font-family:var(--px);font-size:8px;display:block;margin-bottom:5px;line-height:1.5}
+#legend .row{display:flex;align-items:center;gap:6px;margin:2px 0}
+#legend .row i{width:18px;height:12px;border:2px solid var(--ink);display:inline-block;flex:none}
+#legend:empty{display:none}
+
+/* caricamento */
+#loader{position:fixed;inset:0;background:var(--ink);z-index:5000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--paper);text-align:center;padding:20px}
+#loader.bye{animation:bye .5s steps(6) forwards}
+@keyframes bye{to{opacity:0;visibility:hidden}}
+#loader h1{font-family:var(--px);font-size:22px;color:var(--lime);text-shadow:3px 3px 0 var(--leaf1);margin:0 0 6px;letter-spacing:2px}
+#loader .tag{font-family:var(--px);font-size:8px;color:var(--sun);margin-bottom:18px}
+#plant{width:192px;height:224px}
+#lbar{width:min(320px,80vw);height:26px;border:4px solid var(--paper);margin:18px 0 8px;padding:3px;display:flex;gap:3px}
+#lbar i{flex:1;background:var(--night)}#lbar i.on{background:var(--lime)}
+#lpct{font-family:var(--px);font-size:14px;color:var(--sun)}
+#lmsg{font-family:var(--px);font-size:8px;color:var(--fog);margin-top:10px;min-height:28px;line-height:1.7;max-width:340px}
+#lskip{margin-top:14px;visibility:hidden}
+
+@media (max-width:760px){
+  #bar h1{font-size:11px}#bar h1 small{display:none}
+  #panel{top:auto;left:0;right:0;bottom:0;width:100%;max-width:none;height:64%;border-right:0;border-top:4px solid var(--ink)}
+  #panel.closed{transform:translateY(104%)}
+  #legend{left:8px!important;bottom:auto;top:8px;max-width:58vw;font-size:11px;padding:6px 8px}
+  #hud{right:8px;bottom:22px}
+  #panel:not(.closed) ~ #legend,#panel:not(.closed) ~ #hud{display:none}
+  .hudbox{font-size:7px}
+  .leaflet-popup-content{font-size:14px;max-width:74vw}
+}
+
+/* posizione dell'utente */
+.me-ico{background:none;border:0}
+.me-ico i{display:block;width:14px;height:14px;background:var(--water);border:3px solid var(--white);outline:3px solid var(--ink);animation:me 1s steps(2) infinite}
+@keyframes me{50%{background:var(--sky)}}
+#bar .btn.sm{white-space:nowrap}
+@media (max-width:760px){#bar{gap:6px;padding:8px 6px}#bar .btn.sm{padding:8px 6px}}
+
+/* PROVA iOS: la pagina arriva fino al bordo dello schermo, sotto la barra di Safari;
+   gli elementi in basso si alzano dello spazio della barra (solo iPhone e iPad) */
+@supports (-webkit-touch-callout:none){
+  :root{--iosbar:calc(env(safe-area-inset-bottom) + 64px)}
+  html,body{height:100lvh}
+  body{height:100lvh}
+  .leaflet-bottom{bottom:var(--iosbar)}
+  @media (max-width:760px){
+    #hud{bottom:calc(22px + var(--iosbar))}
+    #panel{padding-bottom:var(--iosbar)}
+  }
+}
+</style>
+</head>
+<body>
+<div id="loader">
+  <h1>MILANO VERDE</h1>
+  <div class="tag">FLORA E FAUNA DELLA CITT&Agrave; &middot; DATI APERTI</div>
+  <canvas id="plant" class="pix" width="48" height="56"></canvas>
+  <div id="lbar"></div>
+  <div id="lpct">0%</div>
+  <div id="lmsg">Preparo il terreno&hellip;</div>
+  <button class="btn" id="lskip">Apri la mappa</button>
+</div>
+
+<header id="bar">
+  <button class="btn" id="bpanel" aria-label="Apri o chiudi il pannello">&#9776; Opzioni</button>
+  <h1>MILANO VERDE<small>BETA</small></h1>
+  <div class="sp"></div>
+  <button class="btn sm" id="bgeo" title="Mostra la mia posizione" aria-label="Mostra la mia posizione">&#9678; Qui</button>
+</header>
+
+<main>
+  <div id="map"></div>
+
+  <aside id="panel">
+    <div id="tabs">
+      <button data-t="livelli" class="on">Livelli</button>
+      <button data-t="incroci">Incroci</button>
+      <button data-t="classifica">Classifica</button>
+      <button data-t="info">Info</button>
+    </div>
+
+    <section class="tab on" id="t-livelli">
+      <h2>LIVELLI DELLA MAPPA</h2>
+      <div id="layers"></div>
+      <h2>GLICINI (FILE KML)</h2>
+      <p class="note">Livello predisposto: carica un file KML o KMZ esportato da Google My Maps. I punti restano nel tuo browser.</p>
+      <input type="file" id="kml" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" style="margin:6px 0">
+      <div class="note" id="kmlmsg"></div>
+    </section>
+
+    <section class="tab" id="t-incroci">
+      <h2>INCROCI DI DATI</h2>
+      <div class="modes" id="modes"></div>
+      <div id="modeui"></div>
+    </section>
+
+    <section class="tab" id="t-classifica">
+      <h2>CLASSIFICA DEI QUARTIERI</h2>
+      <select class="full" id="metric"></select>
+      <label class="chk"><input type="checkbox" id="exsmall" checked> Escludi i NIL con meno di 1.000 residenti (parchi, scali, aree agricole)</label>
+      <div id="rankkpi"></div>
+      <ol class="rank" id="rank"></ol>
+    </section>
+
+    <section class="tab" id="t-info">
+      <h2>STATO DELLE FONTI</h2>
+      <p class="note">Aggiornato in diretta a ogni apertura della pagina.</p>
+      <table class="src" id="srcs"></table>
+      <h2>CREDITI E LICENZE</h2>
+      <div id="credits"></div>
+      <h2>METODO E LIMITI</h2>
+      <div id="method"></div>
+    </section>
+  </aside>
+
+  <div id="legend"></div>
+  <div id="hud"></div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+'use strict';
+/* =====================================================================
+   MILANO VERDE — pagina unica, dati letti in diretta dalle fonti.
+   Eccezioni: le tabelle botaniche (fioriture, allergeni, nomi comuni),
+   compilate a mano e dichiarate come approssimazioni nella scheda Info,
+   e i file in data/ (censimento degli alberi, conteggi GBIF per NIL).
+   ===================================================================== */
+
+const CFG = {
+  ckan: 'https://dati.comune.milano.it',
+  // Dataset del Comune (CKAN). Gli URL di download vengono risolti a runtime
+  // con package_show; quelli qui sotto sono il ripiego se la risoluzione fallisce.
+  pkg: {
+    nil:      {id: 'ds964-nil-vigenti-pgt-2030', fmt: 'GeoJSON', local: 'data/nil.geojson', url: '/dataset/e8e765fc-d882-40b8-95d8-16ff3d39eb7c/resource/9c4e0776-56fc-4f3d-8a90-f4992a3be426/download/ds964_nil_wm.geojson'},
+    parchi:   {id: 'ds89_infogeo_parchi_giardini_localizzazione_', fmt: 'GeoJSON', local: 'data/parchi.json', localFirst: true, localDate: '06/05/2024', url: '/dataset/8920bbea-fe1a-4061-8c6e-0746d95316c1/resource/7cba11e7-c236-49a7-aef4-4db6329eec5d/download/parchi.geojson'},
+    orti:     {id: 'ds2186-infogeo-orti-urbani-localizzazione', fmt: 'GeoJSON', url: '/dataset/8f85ebf9-73c7-45cc-a428-66d56b7b46a4/resource/3c052ee5-47d8-4902-b2be-85e053a4ed41/download/ds2186_aree_orti_comunali.geojson'},
+    giardini: {id: 'ds2187-infogeo-giardini-condivisi-localizzazione', fmt: 'GeoJSON', url: '/dataset/57c2441d-69f1-42b9-a83d-41d8b98ddcbd/resource/df9a8989-51e2-4927-aef3-0487a80dc75e/download/ds2187_giardini_condivisi.geojson'},
+    monum:    {id: 'ds2489-gli-alberi-monumentali-nel-comune-di-milano', fmt: 'GeoJSON', url: '/dataset/4e405e99-895e-486c-be70-f8c759e47b31/resource/ea95b273-0a6d-444a-a1fb-b83eae24ce4d/download/alberi_monumentali_031123_final.geojson'}
+  },
+  // Risorse interrogate via DataStore (API SQL / search)
+  rs: {
+    pop:   '6fd7172e-4c9a-48ee-b866-2c74c401c214', // ds27 residenti per NIL, serie storica
+    heat:  '347d0c56-7d28-44ec-960b-4c8c1641058d', // ds2811 esposizione al calore per NIL (SPOTTED, lug 2024)
+    green: '2848da75-9ed1-4e6a-93b3-c899e1c19b71', // ds2813 indice di verde urbano per NIL (SPOTTED, lug 2024)
+    tipo:  'bd55cd57-4dd7-4d72-b182-de4f4b7de8c6'  // ds339 aree verdi per tipologia e affidatario (2014)
+  },
+  // ALBERI. Stato al 16/11/2026: il dataset ds2484 risulta ritirato dal portale
+  // (pagina 404, API 403). La pagina lo cerca comunque a ogni avvio.
+  treesPkg: ['ds2484_infogeo_alberi_localizzazione', '609a5892-f5fa-4fa3-98e3-eab9ebeba5b8'],
+  // Vecchio geoportale ArcGIS (livello "Alberi"): al 16/11/2026 il server non risponde.
+  // Tentativo lasciato in catena perché costa poco. NON TESTATO: i campi sono dedotti a runtime.
+  // Copia del censimento ufficiale (ds2484, aggiornato al 31/03/2024) pubblicata accanto alla pagina:
+  // CSV ridotto alle colonne utili e compresso. Licenza CC BY 4.0, © Comune di Milano.
+  treesRepo: {url: 'data/alberi.zip', n: 247779, date: '31/03/2024'},
+  arcgisTrees: 'https://geoportale.comune.milano.it/arcgisportalh/rest/services/OperationalLayers/Patrimonio_Verde_Realtime/MapServer/1',
+  // OpenStreetMap via Overpass (CORS aperto). NON TESTATO da questo ambiente di sviluppo.
+  overpass: ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'],
+  inat: 'https://api.inaturalist.org/v1/observations',
+  gbif: 'https://api.gbif.org/v1/occurrence/search',
+  gbifNilCounts: 'data/gbif_nil.json', // conteggi per NIL precalcolati con tools/gbif_nil_counts.py
+  gbifInat: '50c9509d-22c7-4a22-a47d-8c48425ef4a7', // dataset iNaturalist dentro GBIF: escluso per non contare due volte
+  ebird: 'https://api.ebird.org/v2/data/obs/geo/recent', // richiede chiave personale (campo nel pannello)
+  cartoKey: 'cb1_5agz_1_f1a0c909ef4a187a638aa616', // chiave gratuita CARTO Basemaps, vincolata al dominio nashkaze.github.io dal pannello CARTO
+  center: [45.4642, 9.19],
+  bbox: {s: 45.386, w: 9.04, n: 45.536, e: 9.28},
+  smallPop: 1000
+};
+
+const PAL = {ink:'#1b1c2e',night:'#2a2d4a',slate:'#4a5273',fog:'#8b93b5',paper:'#f2ecd8',sand:'#e0d3a8',white:'#fffdf4',
+  leaf1:'#1f5c3a',leaf2:'#3a8f4b',leaf3:'#7cc35a',lime:'#c4e86b',water:'#3f7fbf',sky:'#8fd0e8',sun:'#f6c644',
+  orange:'#e8853a',red:'#c9413f',pink:'#f09ac0',violet:'#8f6ad0',brown:'#7a4b2b'};
+
+const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const MESI3 = ['G','F','M','A','M','G','L','A','S','O','N','D'];
+
+/* ---------------------------------------------------------------------
+   FIORITURE — tabella compilata a mano, a livello di genere.
+   Mesi indicativi per la Pianura Padana (±2-3 settimane secondo annata,
+   esposizione e cultivar). v = fioritura vistosa (ornamentale);
+   c = colore usato sulla mappa. Non deriva da un dataset: è
+   un'approssimazione dichiarata, da sostituire con dati fenologici veri.
+   --------------------------------------------------------------------- */
+const FIORI = {
+  Corylus:{m:[1,2,3],c:'#e6d36a'}, Alnus:{m:[2,3],c:'#b98a4a'}, Ulmus:{m:[2,3],c:'#b5553a'},
+  Parrotia:{m:[2,3],c:'#c9413f',v:1}, Cupressus:{m:[2,3,4],c:'#d9c07a'}, Taxus:{m:[2,3,4],c:'#d9c07a'},
+  Populus:{m:[3,4],c:'#c9a0a0'}, Salix:{m:[3,4],c:'#e6d36a'}, Acer:{m:[3,4],c:'#d8e36a'},
+  Prunus:{m:[3,4],c:'#f7b6d2',v:1}, Magnolia:{m:[3,4],c:'#fbe3ee',v:1}, Pyrus:{m:[3,4],c:'#ffffff',v:1},
+  Fraxinus:{m:[3,4],c:'#9c8a6a'}, Malus:{m:[4,5],c:'#f9c9d6',v:1}, Betula:{m:[4],c:'#d6c65a'},
+  Carpinus:{m:[4],c:'#c9d36a'}, Ostrya:{m:[4],c:'#c9d36a'}, Celtis:{m:[4],c:'#b8d06a'}, Zelkova:{m:[4],c:'#b8d06a'},
+  Platanus:{m:[4,5],c:'#c9b36a'}, Quercus:{m:[4,5],c:'#c9c95a'}, Fagus:{m:[4,5],c:'#c9c95a'},
+  Cercis:{m:[4,5],c:'#d6409f',v:1}, Aesculus:{m:[4,5],c:'#fff3d6',v:1}, Paulownia:{m:[4,5],c:'#a98be0',v:1},
+  Crataegus:{m:[4,5],c:'#ffffff',v:1}, Morus:{m:[4,5],c:'#c9d36a'}, Juglans:{m:[4,5],c:'#b8c05a'},
+  Ginkgo:{m:[4,5],c:'#d6d66a'}, Liquidambar:{m:[4,5],c:'#c9d36a'}, Pinus:{m:[4,5],c:'#e0c860'},
+  Picea:{m:[4,5],c:'#c96a5a'}, Wisteria:{m:[4,5],c:'#a98be0',v:1}, Sorbus:{m:[5],c:'#ffffff',v:1},
+  Laburnum:{m:[5],c:'#f6c644',v:1}, Davidia:{m:[5],c:'#ffffff',v:1}, Robinia:{m:[5,6],c:'#ffffff',v:1},
+  Liriodendron:{m:[5,6],c:'#f0c060',v:1}, Gleditsia:{m:[5,6],c:'#c9d36a'}, Olea:{m:[5,6],c:'#f2ecd8'},
+  Melia:{m:[5,6],c:'#c9a8e8',v:1}, Tamarix:{m:[5,6],c:'#f09ac0',v:1}, Diospyros:{m:[5,6],c:'#f2ecd8'},
+  Trachycarpus:{m:[5,6],c:'#f6d35a'}, Tilia:{m:[6,7],c:'#f0e070',v:1}, Catalpa:{m:[6,7],c:'#ffffff',v:1},
+  Ligustrum:{m:[6,7],c:'#ffffff',v:1}, Ailanthus:{m:[6,7],c:'#d8d86a'}, Castanea:{m:[6,7],c:'#f0e0a0'},
+  Koelreuteria:{m:[6,7],c:'#f6c644',v:1}, Albizia:{m:[6,7,8],c:'#f48fb1',v:1}, Styphnolobium:{m:[7,8],c:'#fff8dc',v:1},
+  Sophora:{m:[7,8],c:'#fff8dc',v:1}, Lagerstroemia:{m:[7,8,9],c:'#e85aa0',v:1}, Hibiscus:{m:[7,8,9],c:'#e8a0d0',v:1},
+  Cedrus:{m:[9,10],c:'#d9c07a'}, Eriobotrya:{m:[11,12],c:'#f2ecd8',v:1}
+};
+// Eccezioni a livello di specie (chiave in minuscolo, corrispondenza per prefisso)
+const FIORI_SP = {
+  'magnolia grandiflora':{m:[5,6,7],c:'#fffbe8',v:1}, 'fraxinus ornus':{m:[4,5],c:'#ffffff',v:1},
+  'acer campestre':{m:[4,5],c:'#d8e36a'}, 'prunus cerasifera':{m:[3],c:'#f7b6d2',v:1},
+  'prunus serrulata':{m:[4],c:'#f48fb1',v:1}, 'prunus laurocerasus':{m:[4,5],c:'#ffffff',v:1},
+  'quercus ilex':{m:[5,6],c:'#c9c95a'}, 'tilia tomentosa':{m:[6,7],c:'#f0e070',v:1}
+};
+
+/* ---------------------------------------------------------------------
+   ALLERGENI — potenziale allergenico del polline per genere.
+   l: 3 alto, 2 medio, 1 basso; m: mesi di pollinazione indicativi.
+   Sintesi a mano delle classi di allergenicità comunemente riportate nei
+   calendari pollinici del Nord Italia: indicativa, non è un dato medico.
+   --------------------------------------------------------------------- */
+const ALLERG = {
+  Betula:{l:3,m:[3,4,5]}, Corylus:{l:3,m:[1,2,3]}, Alnus:{l:3,m:[1,2,3]}, Carpinus:{l:3,m:[3,4,5]}, Ostrya:{l:3,m:[4,5]},
+  Cupressus:{l:3,m:[1,2,3,4]}, Cupressocyparis:{l:3,m:[2,3,4]}, Chamaecyparis:{l:2,m:[3,4]}, Thuja:{l:2,m:[2,3,4]},
+  Juniperus:{l:2,m:[2,3,4]}, Calocedrus:{l:2,m:[2,3]}, Cryptomeria:{l:3,m:[2,3]}, Taxus:{l:2,m:[2,3,4]},
+  Olea:{l:3,m:[5,6]}, Platanus:{l:2,m:[4,5]}, Fraxinus:{l:2,m:[3,4,5]}, Quercus:{l:2,m:[4,5,6]}, Fagus:{l:2,m:[4,5]},
+  Ligustrum:{l:2,m:[6,7]}, Morus:{l:2,m:[4,5]}, Broussonetia:{l:2,m:[4,5]},
+  Populus:{l:1,m:[3,4]}, Salix:{l:1,m:[3,4]}, Ulmus:{l:1,m:[2,3]}, Acer:{l:1,m:[3,4]}, Tilia:{l:1,m:[6,7]},
+  Castanea:{l:1,m:[6,7]}, Juglans:{l:1,m:[4,5]}, Pinus:{l:1,m:[4,5,6]}, Cedrus:{l:1,m:[9,10]}, Ailanthus:{l:1,m:[6,7]},
+  Celtis:{l:1,m:[4]}, Zelkova:{l:1,m:[4]}, Liquidambar:{l:1,m:[4,5]}
+};
+const ALL_LBL = ['', 'basso', 'medio', 'alto'];
+const ALL_COL = ['', PAL.sun, PAL.orange, PAL.red];
+
+const NOMI = {Platanus:'Platano',Tilia:'Tiglio',Acer:'Acero',Celtis:'Bagolaro',Carpinus:'Carpino',Quercus:'Quercia',Prunus:'Ciliegio / pruno',
+  Ulmus:'Olmo',Fraxinus:'Frassino',Populus:'Pioppo',Robinia:'Robinia',Aesculus:'Ippocastano',Pinus:'Pino',Cedrus:'Cedro',Betula:'Betulla',
+  Magnolia:'Magnolia',Ginkgo:'Ginkgo',Liquidambar:'Liquidambar',Sophora:'Sofora',Styphnolobium:'Sofora',Morus:'Gelso',Pyrus:'Pero',Malus:'Melo',
+  Liriodendron:'Albero dei tulipani',Gleditsia:'Spino di Giuda',Cercis:'Albero di Giuda',Lagerstroemia:'Lagerstroemia',Cupressus:'Cipresso',
+  Taxus:'Tasso',Alnus:'Ontano',Corylus:'Nocciolo',Salix:'Salice',Fagus:'Faggio',Juglans:'Noce',Ailanthus:'Ailanto',Catalpa:'Catalpa',
+  Koelreuteria:'Koelreuteria',Ligustrum:'Ligustro',Paulownia:'Paulonia',Zelkova:'Zelkova',Ostrya:'Carpino nero',Olea:'Olivo',Picea:'Abete rosso',
+  Abies:'Abete',Albizia:'Albizia',Crataegus:'Biancospino',Hibiscus:'Ibisco',Parrotia:'Parrotia',Castanea:'Castagno',Wisteria:'Glicine',
+  Thuja:'Tuia',Sequoia:'Sequoia',Metasequoia:'Metasequoia',Taxodium:'Cipresso calvo',Melia:'Albero dei rosari',Eriobotrya:'Nespolo del Giappone',
+  Diospyros:'Cachi',Ficus:'Fico',Laurus:'Alloro',Ilex:'Agrifoglio',Sorbus:'Sorbo',Trachycarpus:'Palma di Fortune',Broussonetia:'Gelso da carta'};
+
+const GRUPPI = {Aves:'uccelli',Insecta:'insetti',Mammalia:'mammiferi',Reptilia:'rettili',Amphibia:'rettili',altro:'altro'};
+const GR_LBL = {uccelli:'Uccelli',insetti:'Insetti',mammiferi:'Mammiferi',rettili:'Rettili e anfibi',altro:'Altri animali'};
+const GR_COL = {uccelli:PAL.water,insetti:PAL.orange,mammiferi:PAL.brown,rettili:PAL.leaf2,altro:PAL.violet};
+
+/* =====================================================================
+   SPRITE — pixel art originale, generata da codice su canvas 16x16.
+   Nessuno sprite proviene da videogiochi esistenti.
+   ===================================================================== */
+function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function hash2(x, y, s) { let h = (Math.imul(x + 11, 374761393) ^ Math.imul(y + 7, 668265263) ^ Math.imul(s + 3, 2246822519)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+function ell(x, y, cx, cy, rx, ry) { const dx = (x - cx) / rx, dy = (y - cy) / ry; return dx * dx + dy * dy <= 1; }
+
+const SHAPES = {
+  round:  (x, y) => ell(x, y, 7.5, 6.5, 6.6, 5.7),
+  wide:   (x, y) => ell(x, y, 7.5, 6.2, 7.6, 4.7),
+  oval:   (x, y) => ell(x, y, 7.5, 6.5, 5.1, 6.5),
+  column: (x, y) => ell(x, y, 7.5, 7, 3.2, 7.3),
+  cone:   (x, y) => y >= 0 && y <= 12 && Math.abs(x - 7.5) <= [0.5, 1, 1.5, 2.5, 2, 3, 4, 3.5, 4.5, 5.5, 5, 6, 6.5][y],
+  vase:   (x, y) => y >= 0 && y <= 11 && Math.abs(x - 7.5) <= (y < 3 ? 4.5 + y : y < 7 ? 7.4 : 7.4 - (y - 6) * 1.35),
+  cloud:  (x, y) => ell(x, y, 4.4, 6.6, 4.3, 4.2) || ell(x, y, 10.6, 6.6, 4.3, 4.2) || ell(x, y, 7.5, 4.4, 4.7, 4.3) || ell(x, y, 7.5, 8.2, 5, 3.3),
+  weep:   (x, y) => ell(x, y, 7.5, 5.2, 6.9, 4.9) || (y >= 6 && y <= 9 + (x * 7) % 4 && (x === 1 || x === 3 || x === 5 || x === 10 || x === 12 || x === 14)),
+  airy:   (x, y) => ell(x, y, 7.5, 6, 5.7, 5.9) && hash2(x, y, 3) > 0.17,
+  big:    (x, y) => ell(x, y, 7.5, 6, 7.9, 6.2)
+};
+
+/* Circa una dozzina di generi con sprite dedicato, più conifere e generico */
+const TREE_SPR = {
+  Platanus:   {shape:'cloud', c:['#2f6b3a','#5a9a45','#a3d268'], trunk:'#b9a47a', patch:'#ece2bd'},
+  Tilia:      {shape:'oval',  c:['#1f5c3a','#3a8f4b','#7cc35a'], dots:{c:'#e9e07a',p:.07}},
+  Acer:       {shape:'round', c:['#476b23','#7aa836','#c0dc58']},
+  Celtis:     {shape:'wide',  c:['#1d4f38','#2f7a4d','#5fae62'], trunk:'#8b8b93'},
+  Carpinus:   {shape:'oval',  c:['#24583a','#3f8a52','#86c46c'], trunk:'#6b6b73'},
+  Quercus:    {shape:'cloud', c:['#17452f','#2c6e3f','#57a04f'], trunk:'#5c3a22'},
+  Prunus:     {shape:'round', c:['#3a6b3a','#5f9e52','#a6d67a'], dots:{c:'#f7b6d2',p:.13}, trunk:'#5a2f2a'},
+  Ulmus:      {shape:'vase',  c:['#2a5a2a','#4b8a3c','#8fc45a']},
+  Fraxinus:   {shape:'oval',  c:['#356b2f','#63a544','#b0dc6a']},
+  Populus:    {shape:'column',c:['#2a6140','#4c9457','#9ad07a'], trunk:'#a9a9a0'},
+  Robinia:    {shape:'airy',  c:['#3a6b33','#69a24a','#b3d873'], dots:{c:'#ffffff',p:.06}, trunk:'#4a3626'},
+  Aesculus:   {shape:'big',   c:['#184a2f','#2d7a43','#5cab55'], dots:{c:'#fff3d6',p:.07}},
+  Betula:     {shape:'airy',  c:['#4a7d33','#7fb548','#c4e86b'], trunk:'#f2ecd8', patch:'#1b1c2e'},
+  Magnolia:   {shape:'round', c:['#1c5136','#2f7d4a','#58a85a'], dots:{c:'#fbe3ee',p:.11}},
+  Ginkgo:     {shape:'vase',  c:['#6d7a22','#a8b83a','#dde36a']},
+  Liquidambar:{shape:'oval',  c:['#7a3b24','#b5552c','#e8853a']},
+  Salix:      {shape:'weep',  c:['#3d6b2c','#74a83f','#b9dc6a']},
+  Conifera:   {shape:'cone',  c:['#123b3a','#1f6157','#3f8f78'], trunk:'#5c3a22'},
+  Cipresso:   {shape:'column',c:['#0f3330','#1b544b','#337a68'], trunk:'#5c3a22'},
+  generic:    {shape:'round', c:['#2a5d44','#4a8a5f','#86bf86']}
+};
+const SPR_ALIAS = {Pinus:'Conifera',Cedrus:'Conifera',Picea:'Conifera',Abies:'Conifera',Taxus:'Conifera',Thuja:'Conifera',Sequoia:'Conifera',
+  Sequoiadendron:'Conifera',Metasequoia:'Conifera',Taxodium:'Conifera',Chamaecyparis:'Conifera',Calocedrus:'Conifera',Cryptomeria:'Conifera',Larix:'Conifera',
+  Cupressus:'Cipresso',Cupressocyparis:'Cipresso',Juniperus:'Cipresso',Ostrya:'Carpinus',Sophora:'Robinia',Styphnolobium:'Robinia',Gleditsia:'Robinia',
+  Malus:'Prunus',Pyrus:'Prunus',Zelkova:'Ulmus',Fagus:'Quercus'};
+function sprKey(genus) { return TREE_SPR[genus] ? genus : (SPR_ALIAS[genus] || 'generic'); }
+
+function drawTreeSprite(def, opt) {
+  opt = opt || {};
+  const c = mkCanvas(16, 16), g = c.getContext('2d'), m = SHAPES[def.shape];
+  const px = (x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+  let bottom = 0;
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (m(x, y)) bottom = Math.max(bottom, y);
+  const tk = def.trunk || PAL.brown;
+  for (let y = Math.max(0, bottom - 2); y < 16; y++) {
+    px(7, y, tk); px(8, y, tk);
+    g.fillStyle = 'rgba(27,28,46,.35)'; g.fillRect(8, y, 1, 1);
+    if (def.patch && hash2(7, y, 5) > 0.45) px(7, y, def.patch);
+  }
+  px(6, 15, PAL.ink); px(9, 15, PAL.ink);
+  const out = opt.outline || '#12301f';
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    if (!m(x, y)) continue;
+    const edge = !m(x - 1, y) || !m(x + 1, y) || !m(x, y - 1) || !m(x, y + 1);
+    const t = (x - 7.5) * 0.6 + (y - 6) * 0.9 + (hash2(x, y, 1) - 0.5) * 3;
+    let col = edge ? out : t < -2.4 ? def.c[2] : t > 3 ? def.c[0] : def.c[1];
+    if (!edge && def.dots && !opt.bloom && hash2(x, y, 7) < def.dots.p) col = def.dots.c;
+    if (!edge && opt.bloom && hash2(x, y, 9) < (opt.showy ? 0.38 : 0.2)) col = opt.bloom;
+    px(x, y, col);
+  }
+  return c;
+}
+// alone colorato (modalità allergie) intorno a uno sprite
+function withHalo(src, color) {
+  const c = mkCanvas(18, 18), g = c.getContext('2d'), tmp = mkCanvas(16, 16), t = tmp.getContext('2d');
+  t.drawImage(src, 0, 0); t.globalCompositeOperation = 'source-in'; t.fillStyle = color; t.fillRect(0, 0, 16, 16);
+  for (const [dx, dy] of [[0,1],[2,1],[1,0],[1,2],[0,0],[2,0],[0,2],[2,2]]) g.drawImage(tmp, dx, dy);
+  g.drawImage(src, 1, 1);
+  return c;
+}
+const _sprCache = new Map();
+function treeSprite(genus, variant, color, showy) {
+  const k = sprKey(genus), key = k + '|' + variant + '|' + (color || '') + '|' + (showy ? 1 : 0);
+  let s = _sprCache.get(key);
+  if (!s) {
+    const def = TREE_SPR[k];
+    if (variant === 'bloom') s = drawTreeSprite(def, {bloom: color, showy});
+    else if (variant === 'halo') s = withHalo(drawTreeSprite(def), color);
+    else s = drawTreeSprite(def);
+    _sprCache.set(key, s);
+  }
+  return s;
+}
+function genusColor(genus) { return TREE_SPR[sprKey(genus)].c[1]; }
+
+/* Sprite da mappa di caratteri */
+function fromMap(rows, pal, mirror) {
+  const h = rows.length, w = mirror ? rows[0].length * 2 : rows[0].length, c = mkCanvas(w, h), g = c.getContext('2d');
+  rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) { const col = pal[r[x]]; if (!col) continue; g.fillStyle = col; g.fillRect(x, y, 1, 1); if (mirror) g.fillRect(w - 1 - x, y, 1, 1); } });
+  return c;
+}
+const K = PAL.ink;
+const SPR = {};
+function buildSprites() {
+  SPR.uccelli = fromMap([
+    '................','................','.....kkkk.......','....kbbbbk......','...kbbwebbkoo...','...kbbbbbbkk....',
+    '..kkbbbbwwk.....','.kddkbbwwwwk....','kddddkwwwwwk....','.kkdddkwwwk.....','...kkddkkk......','.....kkk.k......',
+    '......o..o......','.....oo.oo......','................','................'], {k:K,b:PAL.water,d:'#2c5f96',w:PAL.white,e:K,o:PAL.orange});
+  SPR.insetti = fromMap([
+    '........','........','.kk.....','kook....','koook..k','koyook.k','koooookk','.koooykk','..kkkkkk','.kppppkk','kppyppkk','kppppk.k','.kppk..k','..kk....','........','........'],
+    {k:K,o:PAL.orange,y:PAL.sun,p:'#e0b040'}, true);
+  SPR.rettili = fromMap([
+    '........','........','........','..kkk...','.kwwkk..','.kwekgkk','.kkkgggg','kggggggg','kgggggll','kgggglll','.kggglll','kkgkkggg','kggk.kkk','.kk.....','........','........'],
+    {k:K,g:PAL.leaf2,l:PAL.lime,w:PAL.white,e:K}, true);
+  SPR.mammiferi = fromMap([
+    '................','................','................','.....k.k.k.k....','....kbkbkbkbk...','...kbbdbbdbbbk..','..kbbbbbbbbbdk..',
+    '.kkbbdbbbdbbbbk.','ksskkbbbbbbbdbk.','kessskbbdbbbbbk.','.kssssbbbbbbbk..','..kkskkkkkskk...','....kk....kk....','................','................','................'],
+    {k:K,b:PAL.brown,d:'#4d2f1b',s:PAL.sand,e:K});
+  SPR.altro = fromMap([
+    '................','................','................','................','.......kkkk.....','......kvvvvk....','.....kvvkkvvk...',
+    '.k.k.kvkvvkvk...','.k.k.kvkkvvvk...','.kkk.kvvvvvk....','kyyykkkkkkyk....','kyyyyyyyyyyyk...','.kkkkkkkkkkk....','................','................','................'],
+    {k:K,v:PAL.violet,y:PAL.sand});
+  SPR.orto = fromMap([
+    '................','.....g...g......','......g.gg......','.....ggggg......','......ggg.......','.....kkkkk......','....kooooook....',
+    '....koooyook....','.....koooook....','.....koyook.....','......koook.....','......kook......','.......kok......','.......kk.......','................','................'],
+    {k:K,o:PAL.orange,y:PAL.sun,g:PAL.leaf2});
+  SPR.giardino = fromMap([
+    '................','.....kk..kk.....','....kppkkppk....','...kppppppppk...','...kppyyyyppk...','....kpyooypk....','...kppyyyyppk...',
+    '...kppppppppk...','....kppkkppk....','.....kkggkk.....','..kk...gg.......','.kllk..gg..kk...','..kllk.gg.kllk..','...kkkgggkllk...','.....kggggkk....','......kkkk......'],
+    {k:K,p:PAL.pink,y:PAL.sun,o:PAL.orange,g:PAL.leaf2,l:PAL.leaf3});
+  // cartello stradale per il livello dei nomi
+  SPR.nomi = fromMap([
+    '................','................','.kkkkkkkkkkkkkk.','.kbbbbbbbbbbbbk.','.kbbbwwbbwbbbbk.','.kbbwbbwbwbbbbk.','.kbbwbbwbwbbbbk.',
+    '.kbbwwwwbwwwbbk.','.kbbwbbwbwbbwbk.','.kbbwbbwbwwwbbk.','.kbbbbbbbbbbbbk.','.kkkkkkkkkkkkkk.','.......kk.......','.......kk.......','.......kk.......','......kkkk......'],
+    {k:K,b:PAL.water,w:PAL.white});
+  SPR.glicine = fromMap([
+    '................','.bbbbbbbbbbbbbb.','kggvggvggvggvggk','kvvvgvvvgvvvgvvk','.kvpvkvpvkvpvkk.','.bvpv.vpv.vpv.b.','.b.vp.kvp.kvp.b.',
+    '.b.pv..pv..pv.b.','.b..v..vp..v..b.','.b..p...v..p..b.','.b......p.....b.','.b............b.','.b............b.','.b............b.','kbk..........kbk','................'],
+    {k:K,b:PAL.brown,g:PAL.leaf2,v:PAL.violet,p:'#c9a8f0'});
+  // albero monumentale: chioma grande, contorno dorato e stella
+  const mon = drawTreeSprite({shape:'big', c:['#17452f','#2c6e3f','#6ab85a'], trunk:'#5c3a22'}, {outline:'#8a6a12'});
+  const mg = mon.getContext('2d');
+  ['..y..','.yyy.','yyyyy','.yyy.','..y..'].forEach((r, y) => { for (let x = 0; x < 5; x++) if (r[x] === 'y') { mg.fillStyle = (x === 2 && y === 2) ? '#fff7c2' : PAL.sun; mg.fillRect(11 + x, y, 1, 1); } });
+  SPR.monum = withHalo(mon, PAL.sun);
+  SPR.parco = fromMap([
+    '................','................','....kkk....kkk..','...kgggk..kgggk.','..kglgggkkglgggk','..kgggggkkgggggk','...kgggk..kgggk.','....kbk....kbk..',
+    '....kbk....kbk..','kkkkkbkkkkkkbkkk','kllllllllllllllk','klglllglllglllgk','kllllllllllllllk','kkkkkkkkkkkkkkkk','................','................'],
+    {k:K,g:PAL.leaf2,l:PAL.leaf3,b:PAL.brown});
+  SPR.nil = fromMap([
+    '................','.kkkkkk.kkkkkk..','.k....k.k....k..','.k....kkk....kk.','.k...........k..','.kk..........k..','..k.........kk..','..k.........k...',
+    '.kk....kkk..k...','.k.....k.k..kk..','.k....kk.k...k..','.kkkkkk..kkkkk..','................','................','................','................'], {k:K});
+  SPR.calore = fromMap([
+    '................','.......kk.......','......krrk......','......krrk......','.....krrork.....','.....kroork.....','....kroooork....','....kroyyork....',
+    '...krooyyoork...','...kroyyyyork...','...kroyyyyork...','....kroyyork....','.....kkkkkk.....','................','................','................'],
+    {k:K,r:PAL.red,o:PAL.orange,y:PAL.sun});
+}
+function sprURL(c, scale) { const s = scale || 2, o = mkCanvas(c.width * s, c.height * s), g = o.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0, o.width, o.height); return o.toDataURL(); }
+function sprIcon(c, px, cls) { return L.divIcon({className: 'spr-ico' + (cls ? ' ' + cls : ''), iconSize: [px, px], iconAnchor: [px / 2, px - 2], popupAnchor: [0, -px + 6], html: '<img class="pix" width="' + px + '" height="' + px + '" src="' + sprURL(c, 2) + '" alt="">'}); }
+
+/* ---------------------------------------------------------------------
+   Schermata di caricamento: una pianta che cresce col caricamento reale
+   --------------------------------------------------------------------- */
+const FLOWER = ['...ppp.....','..ppppp.pp.','..ppppppppp','.pp.pyyppp.','ppppyyyyp..','pppyyoyyppp','.ppyyyyyppp','..ppyyypp..','.ppppppppp.','.ppp.pppp..','.....ppp...'];
+function drawPlant(g, p, t) {
+  const W = 48, H = 56, px = (x, y, c, w, h) => { g.fillStyle = c; g.fillRect(x, y, w || 1, h || 1); };
+  g.clearRect(0, 0, W, H);
+  // terreno
+  px(6, 47, '#4d2f1b', 36, 9); px(8, 46, PAL.brown, 32, 2); px(6, 48, PAL.brown, 36, 3);
+  for (let i = 0; i < 26; i++) px(7 + Math.floor(hash2(i, 1, 2) * 34), 49 + Math.floor(hash2(i, 2, 2) * 6), i % 3 ? '#3a2314' : '#9a6a40');
+  px(10, 46, PAL.leaf2, 3, 1); px(34, 46, PAL.leaf2, 4, 1); px(20, 46, PAL.leaf3, 2, 1);
+  if (p < 0.06) { px(23, 44, PAL.sand, 2, 2); px(23, 45, '#b89a5a', 2, 1); return; }
+  const stem = Math.round(Math.min(1, (p - 0.04) / 0.72) * 28);
+  for (let i = 0; i < stem; i++) { const y = 45 - i, sx = 23 + ((i > 9 && i < 17) ? 1 : 0); px(sx, y, PAL.leaf2); px(sx + 1, y, PAL.leaf1); }
+  const leaf = (y, dir, size) => {
+    const sx = 23 + ((45 - y > 9 && 45 - y < 17) ? 1 : 0);
+    for (let i = 1; i <= size; i++) {
+      const x = dir > 0 ? sx + 1 + i : sx - i, hgt = i < size ? (i === 1 ? 1 : 2) : 1;
+      px(x, y - Math.min(i, 2), i % 2 ? PAL.leaf3 : PAL.leaf2, 1, hgt + 1);
+    }
+    px(dir > 0 ? sx + 1 + size : sx - size, y - 2, PAL.lime);
+  };
+  [[5, 1], [10, -1], [15, 1], [20, -1], [25, 1]].forEach(([at, dir]) => { if (stem >= at) leaf(45 - at, dir, Math.min(6, 2 + Math.floor((stem - at) / 2))); });
+  const top = 45 - stem, sx = 23 + ((stem > 9 && stem < 17) ? 1 : 0);
+  if (p >= 1) {
+    const ox = sx - 5, oy = top - 9;
+    FLOWER.forEach((r, y) => { for (let x = 0; x < r.length; x++) { const ch = r[x]; if (ch === '.') continue; px(ox + x, oy + y, ch === 'p' ? ((x + y) % 5 === 0 ? '#fbd0e4' : PAL.pink) : ch === 'y' ? PAL.sun : PAL.orange); } });
+    for (let i = 0; i < 6; i++) if (Math.floor(t / 180 + i * 1.7) % 3 === 0) px(6 + Math.floor(hash2(i, 5, Math.floor(t / 540)) * 36), 4 + Math.floor(hash2(i, 6, Math.floor(t / 540)) * 30), i % 2 ? PAL.sun : PAL.white);
+  } else if (p > 0.72) {
+    const s = p > 0.9 ? 3 : 2;
+    px(sx - s + 1, top - 2 * s + 1, PAL.leaf3, 2 * s, 2 * s); px(sx - s + 2, top - 2 * s, PAL.leaf3, 2 * s - 2, 1);
+    if (p > 0.84) px(sx - 1, top - 2 * s, PAL.pink, 3, s);
+  } else if (stem > 2) { px(sx, top - 1, PAL.lime, 2, 1); }
+}
+
+/* =====================================================================
+   UTILITÀ
+   ===================================================================== */
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => (v == null || v === '') ? NaN : (typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.')));
+const fmt = (n, d) => (n == null || !isFinite(n)) ? 'n.d.' : n.toLocaleString('it-IT', {maximumFractionDigits: d == null ? 0 : d, minimumFractionDigits: 0, useGrouping: 'always'});
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const tick = () => new Promise(r => setTimeout(r, 0));
+const cap = s => { s = String(s || '').trim().toLowerCase(); return s ? s[0].toUpperCase() + s.slice(1) : ''; };
+const titleCase = s => String(s || '').toLowerCase().replace(/(^|[\s\-'(])([a-zà-ù])/g, (m, a, b) => a + b.toUpperCase()).replace(/\bQt\b/g, 'QT').replace(/\bQ\.re\b/gi, 'Q.re').replace(/\b(Di|Del|Della|Dei|Sul|Al|E)\b/g, m => m.toLowerCase());
+
+async function fetchX(url, opt) {
+  opt = opt || {};
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), opt.timeout || 30000);
+  try {
+    const r = await fetch(url, {signal: ctl.signal, headers: opt.headers || undefined, method: opt.method || 'GET', body: opt.body});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r;
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('tempo scaduto');
+    if (e instanceof TypeError) throw new Error('rete o CORS (' + e.message + ')');
+    throw e;
+  } finally { clearTimeout(t); }
+}
+const fetchJSON = async (url, opt) => {
+  const r = await fetchX(url, opt), txt = await r.text();
+  try { return JSON.parse(txt); } catch (e) { throw new Error('risposta non JSON'); }
+};
+
+/* Mercatore normalizzato, relativo a un'origine vicina a Milano (precisione in Float32) */
+const mercX = lon => (lon + 180) / 360;
+const mercY = lat => { const s = Math.sin(lat * Math.PI / 180); return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI); };
+const X0 = mercX(CFG.center[1]), Y0 = mercY(CFG.center[0]);
+const unX = rx => (rx + X0) * 360 - 180;
+const unY = ry => { const n = Math.PI - 2 * Math.PI * (ry + Y0); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); };
+
+/* ZIP minimale (deflate) con DecompressionStream: serve per lo ZIP degli alberi e per i KMZ */
+async function unzipPick(buf, re) {
+  const dv = new DataView(buf), td = new TextDecoder();
+  let i = buf.byteLength - 22;
+  for (; i >= 0; i--) if (dv.getUint32(i, true) === 0x06054b50) break;
+  if (i < 0) throw new Error('file ZIP non valido');
+  const n = dv.getUint16(i + 10, true); let off = dv.getUint32(i + 16, true);
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true), csize = dv.getUint32(off + 20, true), nl = dv.getUint16(off + 28, true),
+      el = dv.getUint16(off + 30, true), cl = dv.getUint16(off + 32, true), lho = dv.getUint32(off + 42, true);
+    const name = td.decode(new Uint8Array(buf, off + 46, nl));
+    if (re.test(name)) {
+      const start = lho + 30 + dv.getUint16(lho + 26, true) + dv.getUint16(lho + 28, true), data = new Uint8Array(buf, start, csize);
+      let st = new Blob([data]).stream();
+      if (method === 8) {
+        if (typeof DecompressionStream === 'undefined') throw new Error('questo browser non sa aprire gli ZIP: estrai il file a mano');
+        st = st.pipeThrough(new DecompressionStream('deflate-raw'));
+      } else if (method !== 0) throw new Error('compressione ZIP non supportata');
+      return {name, stream: st};
+    }
+    off += 46 + nl + el + cl;
+  }
+  throw new Error('nello ZIP non c\'è il file atteso');
+}
+
+/* Lettura a righe da uno stream: il GeoJSON del Comune pesa 130 MB, non va caricato intero in memoria */
+async function* linesOf(stream) {
+  const rd = stream.pipeThrough(new TextDecoderStream()).getReader(); let buf = '';
+  for (;;) {
+    const {done, value} = await rd.read(); if (done) break;
+    buf += value; let start = 0, i;
+    while ((i = buf.indexOf('\n', start)) >= 0) { yield buf.slice(start, i); start = i + 1; }
+    buf = buf.slice(start);
+  }
+  if (buf) yield buf;
+}
+function splitCSV(line, sep) {
+  if (line.indexOf('"') < 0) return line.split(sep);
+  const out = []; let f = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (q) { if (ch === '"') { if (line[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+    else if (ch === '"') q = true; else if (ch === sep) { out.push(f); f = ''; } else f += ch;
+  }
+  out.push(f); return out;
+}
+
+/* =====================================================================
+   STATO DELLE FONTI (mostrato nella scheda Info, aggiornato in diretta)
+   ===================================================================== */
+const SRC = {};
+function src(key, label, state, note) {
+  SRC[key] = Object.assign(SRC[key] || {}, {label: label || (SRC[key] && SRC[key].label), state, note: note || ''});
+  renderSources();
+}
+function renderSources() {
+  const el = $('#srcs'); if (!el) return;
+  const lab = {ok: 'OK', err: 'ERRORE', wait: 'ATTESA', part: 'PARZIALE', off: 'SPENTA'};
+  el.innerHTML = Object.keys(SRC).map(k => { const s = SRC[k]; return '<tr><td class="st ' + s.state + '">' + (lab[s.state] || s.state) + '</td><td><b>' + esc(s.label) + '</b><br>' + s.note + '</td></tr>'; }).join('');
+}
+
+/* =====================================================================
+   SCHERMATA DI CARICAMENTO
+   ===================================================================== */
+const Loader = {
+  total: 0, done: 0, shown: 0, closed: false, t0: performance.now(),
+  init() {
+    const bar = $('#lbar'); for (let i = 0; i < 16; i++) bar.appendChild(document.createElement('i'));
+    this.g = $('#plant').getContext('2d');
+    $('#lskip').onclick = () => this.close(true);
+    setTimeout(() => { $('#lskip').style.visibility = 'visible'; }, 9000);
+    const loop = t => {
+      if (this.closed && this.shown >= 1 && performance.now() - this.tClose > 900) return;
+      const target = this.total ? this.done / this.total : 0;
+      this.shown += (target - this.shown) * 0.09; if (target - this.shown < 0.004) this.shown = target;
+      drawPlant(this.g, this.shown, t);
+      const pct = Math.round(this.shown * 100); $('#lpct').textContent = pct + '%';
+      const cells = $('#lbar').children; for (let i = 0; i < cells.length; i++) cells[i].className = (i < Math.round(this.shown * cells.length)) ? 'on' : '';
+      if (this.ready && this.shown >= 0.999 && !this.closed) this.close();
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  },
+  task(label, w) { this.total += w; const self = this; let fin = false; return {end(msg) { if (fin) return; fin = true; self.done += w; self.msg(msg || label); }}; },
+  msg(m) { const el = $('#lmsg'); if (el) el.textContent = m; },
+  finish() { this.ready = true; this.done = this.total; },
+  close(force) {
+    if (this.closed) return; this.closed = true; this.tClose = performance.now(); if (force) this.shown = 1;
+    setTimeout(() => { $('#loader').classList.add('bye'); if (window.map) map.invalidateSize(); }, force ? 0 : 750);
+  }
+};
+
+/* =====================================================================
+   MAPPA
+   ===================================================================== */
+let map, baseTiles, labelTiles;
+const isMobile = () => window.matchMedia('(max-width:760px)').matches;
+function initMap() {
+  map = window.map = L.map('map', {center: CFG.center, zoom: isMobile() ? 12 : 13, minZoom: 10, maxZoom: 19, zoomControl: false, preferCanvas: true, tap: false});
+  L.control.zoom({position: 'topright'}).addTo(map);
+  map.createPane('vec').style.zIndex = 350;
+  map.createPane('labels').style.zIndex = 420; map.getPane('labels').style.pointerEvents = 'none';
+  map.createPane('sprites').style.zIndex = 450; map.getPane('sprites').style.pointerEvents = 'none';
+  // Da fine agosto 2026 CARTO richiede una chiave gratuita (carto.com/basemaps/apikey): senza, i tasselli
+  // arrivano con la scritta "API KEY REQUIRED". Senza chiave la pagina non li carica affatto.
+  setBasemap(cartoKey());
+  map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
+  map.on('click', e => { hitAndPopup(e.containerPoint, e.latlng); });
+  // le icone a sprite (glicini, orti, giardini, monumentali) si rimpiccioliscono allontanandosi
+  const mk = () => { const z = map.getZoom(); map.getContainer().style.setProperty('--mk', z <= 11 ? 0.35 : z === 12 ? 0.45 : z === 13 ? 0.6 : z === 14 ? 0.75 : z === 15 ? 0.9 : z === 16 ? 1.05 : z === 17 ? 1.2 : 1.4);
+    // i glicini seguono la scala degli alberi: 16, 24 e 32 px agli zoom 17, 18 e 19 (icona base 32 px)
+    map.getContainer().style.setProperty('--mkt', z >= 19 ? 1 : z === 18 ? 0.75 : z === 17 ? 0.5 : z === 16 ? 0.34 : z === 15 ? 0.28 : 0.22); };
+  map.on('zoomend', mk); mk();
+  map.on('zoomend', updateHud);
+}
+
+function cartoKey() { return (CFG.cartoKey || '').trim(); }
+function setBasemap(key, style) {
+  const att = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
+  if (baseTiles) map.removeLayer(baseTiles); if (labelTiles) map.removeLayer(labelTiles); baseTiles = labelTiles = null;
+  if (!key) { src('carto', 'Mappa di base CARTO', 'off', 'Serve una chiave gratuita: richiedila su carto.com/basemaps/apikey e scrivila in CFG.cartoKey (a_tables.js). Senza chiave la mappa mostra solo i dati.'); return; }
+  const u = v => 'https://basemaps.cartocdn.com/rastertiles/' + v + '/{z}/{x}/{y}{r}.png?key=' + encodeURIComponent(key);
+  // Positron senza etichette, ricolorata via filtro CSS (.base-tiles); etichette su un livello separato
+  baseTiles = L.tileLayer(u(style || 'light_nolabels'), {maxZoom: 20, maxNativeZoom: 18, className: 'base-tiles', attribution: att}).addTo(map);
+  labelTiles = L.tileLayer(u('light_only_labels'), {maxZoom: 20, maxNativeZoom: 18, pane: 'labels', className: 'label-tiles'});
+  if (ST.on.nomi) labelTiles.addTo(map);
+  let ok = 0, bad = 0;
+  baseTiles.on('tileload', () => { if (++ok === 1) src('carto', 'Mappa di base CARTO', 'ok', 'Tasselli Positron (' + (style || 'light_nolabels') + ') con chiave.'); });
+  // se la variante senza etichette non esiste con il nuovo schema a chiave, ripiego su light_all (documentata)
+  baseTiles.on('tileerror', () => { if (++bad === 3 && !ok) { if (!style) setBasemap(key, 'light_all'); else src('carto', 'Mappa di base CARTO', 'err', 'I tasselli non arrivano: controlla la chiave.'); } });
+}
+
+/* Livello generico a sprite su un unico canvas: regge centinaia di migliaia di punti */
+const SpriteLayer = L.Layer.extend({
+  initialize(drawFn) { this._drawFn = drawFn; },
+  onAdd(m) {
+    this.cv = L.DomUtil.create('canvas', 'sprite-canvas leaflet-zoom-hide', m.getPane('sprites'));
+    this.ctx = this.cv.getContext('2d');
+    m.on('moveend zoomend resize viewreset', this._reset, this); m.on('move', this._req, this);
+    this._reset();
+  },
+  onRemove(m) { L.DomUtil.remove(this.cv); m.off('moveend zoomend resize viewreset', this._reset, this); m.off('move', this._req, this); this.cv = null; },
+  _req() { if (this._raf || !this.cv) return; this._raf = requestAnimationFrame(() => { this._raf = 0; if (this.cv) this._reset(); }); },
+  redraw() { this._req(); },
+  _reset() {
+    const m = this._map, s = m.getSize(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (this.cv.width !== s.x * dpr || this.cv.height !== s.y * dpr) { this.cv.width = s.x * dpr; this.cv.height = s.y * dpr; this.cv.style.width = s.x + 'px'; this.cv.style.height = s.y + 'px'; }
+    L.DomUtil.setPosition(this.cv, m.containerPointToLayerPoint([0, 0]));
+    const g = this.ctx; g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, s.x, s.y); g.imageSmoothingEnabled = false;
+    const z = m.getZoom(), sc = 256 * Math.pow(2, z), pb = m.getPixelBounds();
+    this._drawFn(g, {z, sc, w: s.x, h: s.y, bx: X0 * sc - pb.min.x, by: Y0 * sc - pb.min.y});
+  }
+});
+function viewNow() { const s = map.getSize(), z = map.getZoom(), sc = 256 * Math.pow(2, z), pb = map.getPixelBounds(); return {z, sc, w: s.x, h: s.y, bx: X0 * sc - pb.min.x, by: Y0 * sc - pb.min.y}; }
+
+/* =====================================================================
+   NIL: confini, appartenenza dei punti, statistiche
+   ===================================================================== */
+const NIL = {list: [], byId: {}, layer: null};
+function ringArea(r) { let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] - r[i][0]) * (r[j][1] + r[i][1]); return a / 2; }
+function pip(x, y, rings) {
+  let inside = false;
+  for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const xi = r[i][0], yi = r[i][1], xj = r[j][0], yj = r[j][1];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function polysOf(geom) { return geom.type === 'Polygon' ? [geom.coordinates] : geom.type === 'MultiPolygon' ? geom.coordinates : []; }
+function geomCentroid(geom) {
+  let best = null, bestA = -1;
+  for (const p of polysOf(geom)) { const a = Math.abs(ringArea(p[0])); if (a > bestA) { bestA = a; best = p[0]; } }
+  if (!best) return geom.type === 'Point' ? geom.coordinates : null;
+  let x = 0, y = 0; for (const c of best) { x += c[0]; y += c[1]; } return [x / best.length, y / best.length];
+}
+function setNil(gj) {
+  NIL.list = gj.features.map(f => {
+    const polys = polysOf(f.geometry); let w = 180, e = -180, s = 90, n = -90;
+    for (const p of polys) for (const c of p[0]) { if (c[0] < w) w = c[0]; if (c[0] > e) e = c[0]; if (c[1] < s) s = c[1]; if (c[1] > n) n = c[1]; }
+    const id = +f.properties.ID_NIL;
+    return {id, name: titleCase(f.properties.NIL), polys, w, e, s, n, area: +f.properties.Shape_Area || 0, f,
+      pop: null, trees: 0, allerg: 0, parkM2: 0, parks: 0, fauna: 0, heat: null, green: null};
+  });
+  NIL.byId = {}; NIL.list.forEach(o => { NIL.byId[o.id] = o; });
+  NIL.bbox = NIL.list.reduce((b, o) => ({w: Math.min(b.w, o.w), e: Math.max(b.e, o.e), s: Math.min(b.s, o.s), n: Math.max(b.n, o.n)}), {w: 180, e: -180, s: 90, n: -90});
+}
+let _lastNil = null;
+function nilOf(lon, lat) {
+  const test = o => lon >= o.w && lon <= o.e && lat >= o.s && lat <= o.n && o.polys.some(p => pip(lon, lat, p));
+  if (_lastNil && test(_lastNil)) return _lastNil.id; // i punti arrivano spesso raggruppati per zona
+  for (const o of NIL.list) if (o !== _lastNil && test(o)) { _lastNil = o; return o.id; }
+  return 0;
+}
+
+/* =====================================================================
+   ALBERI: archivio compatto a vettori tipizzati + indice a griglia
+   ===================================================================== */
+const T = {n: 0, cap: 0, x: null, y: null, g: null, sp: null, h: null, dt: null, dc: null, nil: null, pl: null, vr: null, st: null, yr: null,
+  genera: [], gIdx: new Map(), gCount: [], species: [], spIdx: new Map(), spCount: [], spGenus: [],
+  places: [''], plIdx: new Map([['', 0]]), vars: [''], vrIdx: new Map([['', 0]]),
+  grid: new Map(), source: null, sourceNote: '', withSpecies: 0, done: false, expected: 0};
+const CELL = 1 / 131072; // ~215 m alla latitudine di Milano
+function treesGrow(min) {
+  const cap = Math.max(min, T.cap ? T.cap * 2 : 65536);
+  const g = (A, old) => { const a = new A(cap); if (old) a.set(old.subarray(0, T.n)); return a; };
+  T.x = g(Float32Array, T.x); T.y = g(Float32Array, T.y); T.g = g(Uint16Array, T.g); T.sp = g(Uint16Array, T.sp);
+  T.h = g(Float32Array, T.h); T.dt = g(Float32Array, T.dt); T.dc = g(Float32Array, T.dc); T.nil = g(Uint8Array, T.nil);
+  T.pl = g(Uint16Array, T.pl); T.vr = g(Uint16Array, T.vr); T.st = g(Uint8Array, T.st); T.yr = g(Uint16Array, T.yr); T.cap = cap;
+}
+function intern(list, idx, s, max) { let i = idx.get(s); if (i === undefined) { if (list.length >= (max || 65535)) return 0; i = list.length; list.push(s); idx.set(s, i); } return i; }
+function cleanGenus(s) { s = String(s || '').trim().replace(/^x\s+/i, '').split(/[\s(]/)[0].replace(/[^A-Za-zÀ-ÿ\-]/g, ''); return s.length > 1 ? cap(s) : ''; }
+function addTree(lon, lat, genus, species, variety, h, dt, dc, place, date) {
+  if (!isFinite(lon) || !isFinite(lat) || lat < 45.2 || lat > 45.7 || lon < 8.8 || lon > 9.5) return;
+  if (T.n >= T.cap) treesGrow(T.n + 1);
+  let G = cleanGenus(genus), S = String(species || '').trim();
+  if (!G && S) { G = cleanGenus(S); S = S.split(/\s+/).slice(1).join(' '); }
+  if (G && S.toLowerCase().startsWith(G.toLowerCase() + ' ')) S = S.slice(G.length + 1);
+  S = S.replace(/\s+/g, ' ').toLowerCase(); if (/^(sp\.?|spp\.?|n\.?d\.?|-)$/.test(S)) S = '';
+  if (!G) G = 'Non indicato'; else T.withSpecies++;
+  const i = T.n++, gi = intern(T.genera, T.gIdx, G);
+  if (gi >= T.gCount.length) T.gCount.push(0); T.gCount[gi]++;
+  const full = S ? G + ' ' + S : G, si = intern(T.species, T.spIdx, full);
+  if (si >= T.spCount.length) { T.spCount.push(0); T.spGenus.push(gi); } T.spCount[si]++;
+  T.x[i] = mercX(lon) - X0; T.y[i] = mercY(lat) - Y0; T.g[i] = gi; T.sp[i] = si;
+  T.h[i] = isFinite(h) && h > 0 && h < 80 ? h : 0; T.dt[i] = isFinite(dt) && dt > 0 ? dt : 0; T.dc[i] = isFinite(dc) && dc > 0 ? dc : 0;
+  T.pl[i] = intern(T.places, T.plIdx, String(place || '').trim()); T.vr[i] = intern(T.vars, T.vrIdx, String(variety || '').trim());
+  const ym = /(\d{4})/.exec(String(date || '')); T.yr[i] = ym && +ym[1] > 1700 && +ym[1] < 2100 ? +ym[1] : 0;
+  const nid = NIL.list.length ? nilOf(lon, lat) : 0; T.nil[i] = nid; T.st[i] = 2;
+  if (nid) { const o = NIL.byId[nid]; o.trees++; const a = ALLERG[G]; if (a && a.l >= 2) o.allerg++; }
+  const key = (Math.floor(T.x[i] / CELL) + 2048) * 4096 + (Math.floor(T.y[i] / CELL) + 2048);
+  let cell = T.grid.get(key); if (!cell) T.grid.set(key, cell = []); cell.push(i);
+}
+
+/* Riconosce i campi utili da nomi (e alias) eterogenei: CSV del Comune, ArcGIS, GeoJSON, file locali */
+function detectFields(names, alias) {
+  alias = alias || {};
+  const find = (...res) => { for (const re of res) { const n = names.find(n => re.test(n) || re.test(alias[n] || '')); if (n) return n; } return null; };
+  return {
+    genus: find(/^gener/i, /^genus$/i, /genere/i), species: find(/^specie$/i, /^species$/i, /^specie/i, /specie/i),
+    sci: find(/scient|botan|nome_sci|taxon/i, /di_name/i), variety: find(/variet|cultivar/i),
+    h: find(/^h_m$/i, /altez/i, /^height$/i), dt: find(/diam.*tron/i, /^dbh/i, /diam.*fust/i), dc: find(/diam.*chiom/i, /chioma/i, /crown/i),
+    lon: find(/^long_x_4326$/i, /^lon(g|gitud\w*)?$/i, /^x$/i, /long/i), lat: find(/^lat_y_4326$/i, /^lat(itud\w*)?$/i, /^y$/i, /lat_/i),
+    place: find(/^localit/i, /localit/i, /indirizzo|^via$/i), date: find(/^data_ini/i, /data.*(impianto|messa)/i, /^start_date$/i)
+  };
+}
+function addFromRecord(F, get, lon, lat) {
+  const sci = F.sci ? get(F.sci) : '';
+  addTree(lon, lat, F.genus ? get(F.genus) : sci, F.species ? get(F.species) : (F.genus ? '' : sci), F.variety ? get(F.variety) : '',
+    F.h ? num(get(F.h)) : NaN, F.dt ? num(get(F.dt)) : NaN, F.dc ? num(get(F.dc)) : NaN, F.place ? get(F.place) : '', F.date ? get(F.date) : '');
+}
+function ingestGeoJSONObj(gj) {
+  const fs = gj.features || []; if (!fs.length) throw new Error('GeoJSON senza elementi');
+  const F = detectFields(Object.keys(fs[0].properties || {}));
+  for (const f of fs) { const c = f.geometry && f.geometry.type === 'Point' ? f.geometry.coordinates : null; if (c) addFromRecord(F, n => f.properties[n], +c[0], +c[1]); }
+}
+/* Legge CSV oppure GeoJSON (un elemento per riga, come nei file del Comune) senza tenerli interi in memoria */
+async function ingestStream(stream, label) {
+  let mode = null, F = null, idx = {}, sep = ',', n = 0; const rest = [];
+  for await (let line of linesOf(stream)) {
+    if (mode === null) {
+      line = line.replace(/^\uFEFF/, ''); if (!line.trim()) continue;
+      const c0 = line.trim()[0]; mode = (c0 === '{' || c0 === '[') ? 'gj' : 'csv';
+      if (mode === 'csv') {
+        sep = line.split(';').length > line.split(',').length ? ';' : (line.split('\t').length > line.split(',').length ? '\t' : ',');
+        const hdr = splitCSV(line.replace(/\r$/, ''), sep).map(h => h.trim()); F = detectFields(hdr); hdr.forEach((h, i) => { idx[h] = i; });
+        if (!F.lon || !F.lat) throw new Error('nel CSV mancano le colonne di longitudine e latitudine');
+        continue;
+      }
+    }
+    if (mode === 'csv') {
+      const row = splitCSV(line.replace(/\r$/, ''), sep); if (row.length < 3) continue;
+      addFromRecord(F, k => row[idx[k]], num(row[idx[F.lon]]), num(row[idx[F.lat]]));
+    } else {
+      const k = line.indexOf('"Feature"');
+      if (k < 0 || k > 40) { rest.push(line); continue; }
+      let s = line.trim(); if (s[s.length - 1] === ',') s = s.slice(0, -1);
+      let f; try { f = JSON.parse(s); } catch (e) { continue; }
+      if (!F) F = detectFields(Object.keys(f.properties || {}));
+      const c = f.geometry && f.geometry.type === 'Point' ? f.geometry.coordinates : null;
+      if (c) addFromRecord(F, kk => f.properties[kk], +c[0], +c[1]);
+    }
+    if (++n % 8000 === 0) { hudTrees((label || 'Alberi') + ': ' + fmt(T.n), T.expected ? T.n / T.expected : null); treesChanged(); await tick(); }
+  }
+  if (mode === 'gj' && !T.n && rest.length) ingestGeoJSONObj(JSON.parse(rest.join('\n'))); // GeoJSON compatto su una riga
+}
+async function ingestBlob(blob, name, label) {
+  if (/\.zip$/i.test(name)) { const f = await unzipPick(await blob.arrayBuffer(), /\.(csv|geojson|json)$/i); return ingestStream(f.stream, label); }
+  return ingestStream(blob.stream(), label);
+}
+/* Copia locale del file caricato a mano (IndexedDB), per ritrovarlo alla visita successiva */
+function idb(mode, fn) {
+  return new Promise((res, rej) => {
+    let rq; try { rq = indexedDB.open('milano-verde', 1); } catch (e) { return rej(e); }
+    rq.onupgradeneeded = () => rq.result.createObjectStore('files');
+    rq.onerror = () => rej(rq.error);
+    rq.onsuccess = () => { try { const tx = rq.result.transaction('files', mode), r = fn(tx.objectStore('files')); tx.oncomplete = () => res(r && r.result); tx.onerror = () => rej(tx.error); } catch (e) { rej(e); } };
+  });
+}
+
+/* --- Fonte 2: copia del censimento del Comune pubblicata nel repository, accanto alla pagina --- */
+async function treesFromRepo() {
+  const c = CFG.treesRepo; T.expected = c.n;
+  hudTrees('Carico il censimento degli alberi…', 0.05);
+  const r = await fetchX(c.url, {timeout: 120000});
+  await ingestBlob(await r.blob(), c.url, 'Alberi');
+  if (!T.n) throw new Error('file vuoto o non leggibile');
+  return 'censimento del Comune di Milano aggiornato al ' + c.date + ' (copia del dataset ds2484, CC BY 4.0)';
+}
+/* --- Fonte 1: portale Open Data del Comune (se e quando il dataset torna pubblico) --- */
+async function treesFromCkan() {
+  let pkg = null, lastErr;
+  for (const id of CFG.treesPkg) { try { const r = await fetchJSON(CFG.ckan + '/api/3/action/package_show?id=' + id, {timeout: 15000}); if (r.success) { pkg = r.result; break; } } catch (e) { lastErr = e; } }
+  if (!pkg) throw new Error('dataset non pubblicato sul portale (' + (lastErr ? lastErr.message : 'non trovato') + ')');
+  const rs = pkg.resources || [], pick = rs.find(r => /csv/i.test(r.url) && !/\.zip$/i.test(r.url)) || rs.find(r => /\.zip$/i.test(r.url)) || rs.find(r => /geojson/i.test(r.format + r.url));
+  if (!pick) throw new Error('nessuna risorsa leggibile nel dataset');
+  hudTrees('Scarico gli alberi dal portale del Comune…', 0.05);
+  const r = await fetchX(pick.url, {timeout: 240000});
+  await ingestBlob(await r.blob(), pick.url, 'Alberi dal portale');
+  return 'Open Data Comune di Milano, ' + esc(pkg.title) + ' (CC BY 4.0)';
+}
+/* --- Fonte 4: livello "Alberi" del geoportale ArcGIS. NON TESTATO: il server non era raggiungibile --- */
+async function treesFromArcgis() {
+  const base = CFG.arcgisTrees, meta = await fetchJSON(base + '?f=json', {timeout: 12000});
+  if (meta.error || !meta.fields) throw new Error('servizio non disponibile');
+  const names = meta.fields.map(f => f.name), alias = {}; meta.fields.forEach(f => { alias[f.name] = f.alias || ''; });
+  const F = detectFields(names, alias), oid = meta.objectIdField || (meta.fields.find(f => f.type === 'esriFieldTypeOID') || {}).name || 'OBJECTID';
+  const cnt = (await fetchJSON(base + '/query?where=1%3D1&returnCountOnly=true&f=json', {timeout: 20000})).count;
+  if (!cnt) throw new Error('nessun elemento restituito');
+  T.expected = cnt;
+  const page = Math.min(meta.maxRecordCount || 1000, 2000), out = [oid, F.genus, F.species, F.sci, F.variety, F.h, F.dt, F.dc, F.place, F.date].filter(Boolean).join(',');
+  const offs = []; for (let o = 0; o < cnt; o += page) offs.push(o);
+  let fetched = 0;
+  const worker = async () => {
+    while (offs.length) {
+      const o = offs.shift(); let js, tries = 0;
+      for (;;) { try { js = await fetchJSON(base + '/query?where=1%3D1&outFields=' + encodeURIComponent(out) + '&returnGeometry=true&outSR=4326&geometryPrecision=6&orderByFields=' + oid + '&resultOffset=' + o + '&resultRecordCount=' + page + '&f=json', {timeout: 60000}); if (js.error) throw new Error(js.error.message || 'errore del servizio'); break; } catch (e) { if (++tries > 2) throw e; await sleep(1200); } }
+      for (const f of js.features || []) if (f.geometry) addFromRecord(F, n => f.attributes[n], f.geometry.x, f.geometry.y);
+      fetched += page; hudTrees('Alberi dal geoportale: ' + fmt(T.n), Math.min(1, fetched / cnt)); treesChanged();
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  return 'Geoportale del Comune di Milano, livello "Alberi" del Patrimonio del Verde';
+}
+/* --- Fonte 5: OpenStreetMap via Overpass. Copertura volontaria e parziale. NON TESTATO da qui --- */
+async function treesFromOSM() {
+  const b = NIL.bbox || CFG.bbox, q = '[out:json][timeout:120];node["natural"="tree"](' + [b.s, b.w, b.n, b.e].map(v => v.toFixed(4)).join(',') + ');out body qt;';
+  let js, err;
+  for (const ep of CFG.overpass) {
+    try { hudTrees('Chiedo gli alberi a OpenStreetMap…', 0.1); js = await fetchJSON(ep + '?data=' + encodeURIComponent(q), {timeout: 150000}); if (js && js.elements) break; } catch (e) { err = e; js = null; }
+  }
+  if (!js || !js.elements) throw new Error(err ? err.message : 'nessuna risposta');
+  const els = js.elements;
+  for (let i = 0; i < els.length; i++) {
+    const e = els[i], t = e.tags || {};
+    const sci = t.species || t['species:la'] || t.taxon || t['taxon:species'] || '', genus = t.genus || t['genus:la'] || '';
+    const lon = e.lon, lat = e.lat;
+    if (NIL.list.length && !nilOf(lon, lat)) continue; // fuori dal Comune
+    addTree(lon, lat, genus || sci, genus ? sci : sci, t['taxon:cultivar'] || t.cultivar || '', num(t.height), num(t.diameter) || (num(t.circumference) ? num(t.circumference) * 100 / Math.PI : NaN), num(t.diameter_crown), t['addr:street'] || '');
+    if (i % 20000 === 19999) { hudTrees('Alberi da OpenStreetMap: ' + fmt(T.n), i / els.length); treesChanged(); await tick(); }
+  }
+  if (!T.n) throw new Error('nessun albero nel Comune');
+  return 'OpenStreetMap (ODbL), via Overpass API';
+}
+function treesReset() {
+  T.n = 0; T.genera = []; T.gIdx = new Map(); T.gCount = []; T.species = []; T.spIdx = new Map(); T.spCount = []; T.spGenus = [];
+  T.places = ['']; T.plIdx = new Map([['', 0]]); T.vars = ['']; T.vrIdx = new Map([['', 0]]); T.grid = new Map(); spMeta.length = 0; T.withSpecies = 0; T.done = false; T.expected = 0;
+  NIL.list.forEach(o => { o.trees = 0; o.allerg = 0; });
+}
+let _firstTrees;
+const firstTrees = new Promise(r => { _firstTrees = r; });
+async function loadTrees() {
+  const chain = [['ckan', 'Portale Open Data del Comune', treesFromCkan], ['repo', 'Copia del censimento sul sito', treesFromRepo], ['file', 'File salvato in questo browser', treesFromCache], ['arcgis', 'Geoportale del Comune (ArcGIS)', treesFromArcgis], ['osm', 'OpenStreetMap (Overpass)', treesFromOSM]];
+  const fails = [];
+  for (const [key, label, fn] of chain) {
+    treesReset(); src('alberi', 'Alberi', 'wait', 'Provo: ' + label + '…' + (fails.length ? '<br>' + fails.join('<br>') : ''));
+    try {
+      const note = await fn();
+      T.source = key; T.sourceNote = note; T.done = true; treesChanged(true);
+      src('alberi', 'Alberi', key === 'osm' ? 'part' : 'ok', fmt(T.n) + ' alberi da: ' + note + '.' + (fails.length ? '<br>' + fails.join('<br>') : ''));
+      hudTrees(null); _firstTrees(); return;
+    } catch (e) { fails.push('✗ ' + label + ': ' + esc(e.message)); }
+  }
+  treesReset(); T.done = true; treesChanged(true); hudTrees(null);
+  src('alberi', 'Alberi', 'err', 'Nessuna fonte ha risposto. Puoi caricare un file locale (CSV, ZIP o GeoJSON) dal pannello Livelli.<br>' + fails.join('<br>'));
+  _firstTrees();
+}
+/* --- Fonte 3: file caricato a mano in una visita precedente --- */
+async function treesFromCache() {
+  const rec = await idb('readonly', st => st.get('alberi'));
+  if (!rec || !rec.blob) throw new Error('nessun file salvato in questo browser');
+  await ingestBlob(rec.blob, rec.name, 'Alberi dal file salvato');
+  if (!T.n) throw new Error('file salvato non valido');
+  return 'file <b>' + esc(rec.name) + '</b> caricato a mano e conservato in questo browser';
+}
+async function loadTreesFile(file) {
+  try {
+    hudTrees('Leggo ' + file.name + '…', 0.02); treesReset();
+    await ingestBlob(file, file.name, 'Alberi dal file');
+    if (!T.n) throw new Error('nessun punto valido nel file');
+    T.source = 'file'; T.sourceNote = 'file locale ' + esc(file.name); T.done = true; treesChanged(true);
+    let kept = ''; try { await idb('readwrite', st => st.put({name: file.name, blob: file}, 'alberi')); kept = ' Conservato in questo browser come riserva: alle prossime visite si userà solo se il censimento del sito non risponde.'; } catch (e) {}
+    src('alberi', 'Alberi', 'ok', fmt(T.n) + ' alberi dal file locale <b>' + esc(file.name) + '</b>.' + kept);
+  } catch (e) { src('alberi', 'Alberi', 'err', 'File non leggibile: ' + esc(e.message)); T.done = true; treesChanged(true); }
+  hudTrees(null);
+}
+
+/* =====================================================================
+   STATO DELL'INTERFACCIA
+   ===================================================================== */
+const ST = {mode: 'none', month: new Date().getMonth() + 1, showyOnly: false, monthOnly: false, fGenus: '', fSpecies: '',
+  metric: 'treesCap', choro: null, exSmall: true, on: {alberi: true, monum: true, parchi: true, orti: true, giardini: true, fauna: true, nil: true, glicini: true, nomi: true}};
+let treeLayer, faunaLayer;
+let spMeta = [], spNorm = [], spHi = [], spLev = new Uint8Array(0);
+
+function metaOf(si) {
+  let m = spMeta[si];
+  if (!m) {
+    const name = T.species[si], genus = T.genera[T.spGenus[si]], low = name.toLowerCase().replace(/^(\S+) x /, '$1 ');
+    let fl = null; for (const k in FIORI_SP) if (low.startsWith(k)) { fl = FIORI_SP[k]; break; }
+    m = spMeta[si] = {genus, fl: fl || FIORI[genus] || null, al: ALLERG[genus] || null, col: genusColor(genus)};
+  }
+  return m;
+}
+function recomputeStates() {
+  const ns = T.species.length, stt = new Uint8Array(ns), mode = ST.mode, mo = ST.month;
+  const gi = ST.fGenus ? T.gIdx.get(ST.fGenus) : -1, fs = ST.fSpecies ? T.spIdx.get(ST.fSpecies) : -1;
+  spNorm = new Array(ns); spHi = new Array(ns); spLev = new Uint8Array(ns);
+  for (let si = 0; si < ns; si++) {
+    const m = metaOf(si); let s = 2;
+    if (gi >= 0 && T.spGenus[si] !== gi) s = 0; else if (fs >= 0 && si !== fs) s = 0;
+    else if (mode === 'fiori') s = (m.fl && m.fl.m.indexOf(mo) >= 0 && (!ST.showyOnly || m.fl.v)) ? 3 : 1;
+    else if (mode === 'allergie') s = (m.al && (!ST.monthOnly || m.al.m.indexOf(mo) >= 0)) ? 3 : 1;
+    stt[si] = s; spLev[si] = (s === 3 && mode === 'allergie') ? m.al.l : 0;
+  }
+  for (let i = 0; i < T.n; i++) T.st[i] = stt[T.sp[i]];
+}
+function sprFor(si, hi) {
+  const arr = hi ? spHi : spNorm; let s = arr[si];
+  if (!s) {
+    const m = metaOf(si);
+    if (!hi) s = treeSprite(m.genus, 'n');
+    else if (ST.mode === 'fiori') s = treeSprite(m.genus, 'bloom', m.fl.c, !!m.fl.v);
+    else s = treeSprite(m.genus, 'halo', ALL_COL[m.al.l]);
+    arr[si] = s;
+  }
+  return s;
+}
+function hiColor(si) { const m = metaOf(si); return ST.mode === 'fiori' ? m.fl.c : ALL_COL[m.al.l]; }
+
+/* ---------------------------------------------------------------------
+   Disegno degli alberi: blocchi aggregati da lontano, pixel a media
+   distanza, sprite da vicino. Tutto su un solo canvas.
+   --------------------------------------------------------------------- */
+const RAMP_G = ['#c4e86b', '#7cc35a', '#3a8f4b', '#1f5c3a', '#123b3a'];
+const RAMP_F = ['#fbd0e4', '#f09ac0', '#e85aa0', '#b03a86', '#6a2466'];
+const RAMP_A = ['#f6c644', '#f0a23e', '#e8853a', '#c9413f', '#7a1f2b'];
+function drawTrees(g, v) {
+  const n = T.n; if (!n || !ST.on.alberi) return;
+  const sc = v.sc, bx = v.bx, by = v.by, W = v.w, H = v.h, X = T.x, Y = T.y, S = T.st, modeHi = ST.mode === 'fiori' || ST.mode === 'allergie';
+  if (v.z < 15) {
+    if (CH.key) return; // sotto la coropletica i blocchi coprirebbero i colori dei quartieri
+    const cp = v.z <= 11 ? 6 : v.z <= 13 ? 8 : 10, ax = ((bx % cp) + cp) % cp - cp, ay = ((by % cp) + cp) % cp - cp;
+    const cols = Math.ceil((W - ax) / cp) + 1, rows = Math.ceil((H - ay) / cp) + 1, cnt = new Uint32Array(cols * rows), hl = new Uint32Array(cols * rows), h3 = new Uint32Array(cols * rows), h2 = new Uint32Array(cols * rows), al = ST.mode === 'allergie';
+    for (let i = 0; i < n; i++) {
+      const s = S[i]; if (!s) continue;
+      const px = X[i] * sc + bx; if (px < 0 || px >= W) continue; const py = Y[i] * sc + by; if (py < 0 || py >= H) continue;
+      const c = ((px - ax) / cp | 0) + ((py - ay) / cp | 0) * cols; cnt[c]++; if (s === 3) { hl[c]++; if (al) { const lv = spLev[T.sp[i]]; if (lv === 3) h3[c]++; else if (lv === 2) h2[c]++; } }
+    }
+    let mx = 1, mh = 1; for (let c = 0; c < cnt.length; c++) { if (cnt[c] > mx) mx = cnt[c]; if (hl[c] > mh) mh = hl[c]; }
+    const lm = Math.log(1 + mx), lh = Math.log(1 + mh), ramp = ST.mode === 'fiori' ? RAMP_F : RAMP_A;
+    for (let r = 0; r < rows; r++) for (let cI = 0; cI < cols; cI++) {
+      const c = cI + r * cols, k = cnt[c]; if (!k) continue;
+      const x = ax + cI * cp, y = ay + r * cp;
+      if (modeHi) {
+        if (hl[c]) { g.fillStyle = al ? (h3[c] / k > 0.12 ? ALL_COL[3] : (h3[c] + h2[c]) / k > 0.3 ? ALL_COL[2] : ALL_COL[1]) : ramp[Math.min(4, Math.log(1 + hl[c]) / lh * 5 | 0)]; g.fillRect(x, y, cp - 1, cp - 1); }
+        else { g.fillStyle = 'rgba(74,82,115,.22)'; g.fillRect(x + 1, y + 1, cp - 3, cp - 3); }
+      } else { g.fillStyle = RAMP_G[Math.min(4, Math.log(1 + k) / lm * 5 | 0)]; g.fillRect(x, y, cp - 1, cp - 1); }
+    }
+    return;
+  }
+  // celle della griglia visibili
+  const pad = 40, cx0 = Math.floor((-pad - bx) / sc / CELL), cx1 = Math.floor((W + pad - bx) / sc / CELL), cy0 = Math.floor((-pad - by) / sc / CELL), cy1 = Math.floor((H + pad - by) / sc / CELL);
+  const z = v.z, size = z >= 19 ? 32 : z === 18 ? 24 : 16, vis = [];
+  for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
+    const cell = T.grid.get((cx + 2048) * 4096 + (cy + 2048)); if (!cell) continue;
+    for (let k = 0; k < cell.length; k++) if (S[cell[k]]) vis.push(cell[k]);
+  }
+  if (z < 17) {
+    const d = z === 15 ? 3 : 5, hd = d >> 1;
+    for (let k = 0; k < vis.length; k++) {
+      const i = vis[k], s = S[i], px = Math.round(X[i] * sc + bx), py = Math.round(Y[i] * sc + by), si = T.sp[i];
+      if (s === 1) { g.fillStyle = 'rgba(74,82,115,.35)'; g.fillRect(px - 1, py - 1, 2, 2); continue; }
+      if (d === 5) { g.fillStyle = PAL.ink; g.fillRect(px - hd, py - hd, d + 1, d + 1); }
+      g.fillStyle = s === 3 ? hiColor(si) : metaOf(si).col; g.fillRect(px - hd, py - hd, d, d);
+    }
+    return;
+  }
+  if (vis.length < 9000) vis.sort((a, b) => Y[a] - Y[b]);
+  const hs = size / 2;
+  for (let k = 0; k < vis.length; k++) {
+    const i = vis[k], s = S[i], px = Math.round(X[i] * sc + bx), py = Math.round(Y[i] * sc + by), si = T.sp[i];
+    if (s === 1) { g.globalAlpha = 0.25; g.drawImage(sprFor(si, false), px - hs, py - size + 3, size, size); g.globalAlpha = 1; continue; }
+    const im = sprFor(si, s === 3), f = im.width / 16;
+    g.drawImage(im, px - hs * f, py - (size - 3) * f - (f > 1 ? size / 16 : 0), size * f, size * f);
+  }
+}
+function hitTree(p, v) {
+  if (!ST.on.alberi || v.z < 15 || !T.n) return -1;
+  const sc = v.sc, r = v.z >= 17 ? (v.z >= 19 ? 20 : 14) : 9, yo = v.z >= 17 ? (v.z >= 19 ? 12 : 7) : 0;
+  const cx = Math.floor((p.x - v.bx) / sc / CELL), cy = Math.floor((p.y - v.by) / sc / CELL); let best = -1, bd = r * r;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const cell = T.grid.get((cx + dx + 2048) * 4096 + (cy + dy + 2048)); if (!cell) continue;
+    for (const i of cell) { if (!T.st[i]) continue; const ex = T.x[i] * sc + v.bx - p.x, ey = T.y[i] * sc + v.by - yo - p.y, d = ex * ex + ey * ey; if (d < bd) { bd = d; best = i; } }
+  }
+  return best;
+}
+function mesiTxt(m) { return m.map(x => MESI[x - 1].toLowerCase()).join(', '); }
+function treePopup(i) {
+  const si = T.sp[i], m = metaOf(si), g = m.genus, nome = NOMI[g], o = NIL.byId[T.nil[i]], vr = T.vars[T.vr[i]], pl = T.places[T.pl[i]];
+  const rows = [];
+  if (T.h[i]) rows.push(['Altezza', fmt(T.h[i], 1) + ' m']);
+  if (T.dt[i]) rows.push(['Diametro tronco', fmt(T.dt[i], 0) + ' cm']);
+  if (T.dc[i]) rows.push(['Diametro chioma', fmt(T.dc[i], 1) + ' m']);
+  if (T.yr[i]) rows.push(['In elenco dal', T.yr[i]]);
+  if (pl) rows.push(['Località', esc(pl)]);
+  if (o) rows.push(['Quartiere', esc(o.name)]);
+  if (m.fl) rows.push(['Fioritura', mesiTxt(m.fl.m) + (m.fl.v ? '' : ' (poco vistosa)')]);
+  if (m.al) rows.push(['Polline', 'potenziale ' + ALL_LBL[m.al.l] + ', ' + mesiTxt(m.al.m)]);
+  return '<div class="pop"><h3>' + esc((nome || g).toUpperCase()) + '</h3><div class="sci">' + esc(T.species[si]) + (vr ? ' ‘' + esc(vr) + '’' : '') + '</div>' +
+    (m.fl && m.fl.m.indexOf(ST.month) >= 0 ? '<span class="tag fl">IN FIORE A ' + MESI[ST.month - 1].toUpperCase() + '</span>' : '') +
+    (m.al ? '<span class="tag a' + m.al.l + '">POLLINE ' + ALL_LBL[m.al.l].toUpperCase() + '</span>' : '') +
+    '<table>' + rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('') + '</table>' +
+    '<small>Fonte: ' + (T.source === 'osm' ? 'OpenStreetMap' : 'Comune di Milano') + '. Fioritura e polline: stime per genere.</small></div>';
+}
+
+/* =====================================================================
+   FAUNA
+   ===================================================================== */
+const FA = {list: [], seen: new Set(), groups: {uccelli: true, insetti: true, mammiferi: true, rettili: true, altro: true}, srcOn: {inat: true, gbif: true, ebird: true},
+  inatPage: 0, inatTotal: null, counts: {inat: 0, gbif: 0, ebird: 0}, gbifNil: false, busy: false};
+function addFauna(o) {
+  const key = o.src + ':' + o.id; if (FA.seen.has(key) || !isFinite(o.lat) || !isFinite(o.lon)) return;
+  const nid = NIL.list.length ? nilOf(o.lon, o.lat) : 0; if (NIL.list.length && !nid) return; // fuori dal Comune
+  FA.seen.add(key); o.nil = nid; o.x = mercX(o.lon) - X0; o.y = mercY(o.lat) - Y0;
+  if (nid) NIL.byId[nid].fauna++;
+  FA.list.push(o); FA.counts[o.src]++;
+}
+function faunaVisible(o) { return FA.groups[o.grp] && FA.srcOn[o.src]; }
+function drawFauna(g, v) {
+  if (!ST.on.fauna) return; const L_ = FA.list, sc = v.sc;
+  const size = v.z >= 17 ? 24 : 16, hs = size / 2;
+  for (let k = 0; k < L_.length; k++) {
+    const o = L_[k]; if (!faunaVisible(o)) continue;
+    const px = Math.round(o.x * sc + v.bx), py = Math.round(o.y * sc + v.by); if (px < -20 || py < -20 || px > v.w + 20 || py > v.h + 20) continue;
+    if (v.z < 14 || (ST.mode !== 'none' && ST.mode !== 'fauna')) { g.fillStyle = PAL.ink; g.fillRect(px - 2, py - 2, 5, 5); g.fillStyle = GR_COL[o.grp]; g.fillRect(px - 1, py - 1, 3, 3); }
+    else g.drawImage(SPR[o.grp], px - hs, py - hs, size, size);
+  }
+}
+function hitFauna(p, v) {
+  if (!ST.on.fauna) return null; let best = null, bd = (v.z < 14 ? 8 : 13) ** 2;
+  for (const o of FA.list) { if (!faunaVisible(o)) continue; const dx = o.x * v.sc + v.bx - p.x, dy = o.y * v.sc + v.by - p.y, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = o; } }
+  return best;
+}
+function faunaPopup(o) {
+  const srcL = {inat: 'iNaturalist', gbif: 'GBIF', ebird: 'eBird'}[o.src], nil = NIL.byId[o.nil];
+  return '<div class="pop"><h3>' + esc((o.name || o.sci || 'Animale').toUpperCase()) + '</h3>' + (o.sci ? '<div class="sci">' + esc(o.sci) + '</div>' : '') +
+    (o.img ? '<img loading="lazy" src="' + esc(o.img) + '" alt="">' : '') +
+    '<table><tr><td>Gruppo</td><td>' + GR_LBL[o.grp] + '</td></tr>' + (o.date ? '<tr><td>Data</td><td>' + esc(o.date) + '</td></tr>' : '') +
+    (nil ? '<tr><td>Quartiere</td><td>' + esc(nil.name) + '</td></tr>' : '') + (o.who ? '<tr><td>Osservatore</td><td>' + esc(o.who) + '</td></tr>' : '') +
+    (o.ds ? '<tr><td>Dataset</td><td>' + esc(o.ds) + '</td></tr>' : '') + '</table>' +
+    '<small>' + srcL + (o.lic ? ' · licenza ' + esc(o.lic) : '') + (o.url ? ' · <a href="' + esc(o.url) + '" target="_blank" rel="noopener">scheda originale</a>' : '') + '</small></div>';
+}
+const bboxNow = () => NIL.bbox || CFG.bbox;
+async function loadInat(pages) {
+  if (FA.busy) return; FA.busy = true;
+  const b = bboxNow(); let got = 0;
+  try {
+    for (let k = 0; k < pages; k++) {
+      const page = FA.inatPage + 1;
+      const url = CFG.inat + '?nelat=' + b.n.toFixed(4) + '&nelng=' + b.e.toFixed(4) + '&swlat=' + b.s.toFixed(4) + '&swlng=' + b.w.toFixed(4) +
+        '&iconic_taxa=Aves,Insecta,Mammalia,Reptilia,Amphibia,Arachnida,Mollusca,Actinopterygii&quality_grade=research&geoprivacy=open&per_page=200&page=' + page + '&order_by=observed_on&order=desc&locale=it';
+      const js = await fetchJSON(url, {timeout: 45000});
+      FA.inatPage = page; FA.inatTotal = js.total_results;
+      for (const r of js.results || []) {
+        if (r.obscured || !r.geojson || !r.taxon) continue;
+        const ph = r.photos && r.photos[0], u = r.user || {};
+        addFauna({src: 'inat', id: r.id, lon: +r.geojson.coordinates[0], lat: +r.geojson.coordinates[1], grp: GRUPPI[r.taxon.iconic_taxon_name] || 'altro',
+          name: cap(r.taxon.preferred_common_name || ''), sci: r.taxon.name, date: r.observed_on, img: ph ? String(ph.url).replace('square', 'small') : '',
+          url: r.uri, who: u.name || u.login || '', lic: (r.license_code || 'tutti i diritti riservati').toUpperCase()});
+        got++;
+      }
+      faunaChanged();
+      src('inat', 'iNaturalist', 'ok', fmt(FA.counts.inat) + ' osservazioni recenti caricate su ' + fmt(FA.inatTotal) + ' disponibili (grado ricerca, coordinate pubbliche).');
+      if (!js.results || js.results.length < 200 || page * 200 >= 10000) break;
+      if (k < pages - 1) await sleep(1100); // rispetto del limite consigliato: circa una richiesta al secondo
+    }
+  } catch (e) { src('inat', 'iNaturalist', FA.counts.inat ? 'part' : 'err', (FA.counts.inat ? fmt(FA.counts.inat) + ' osservazioni caricate, poi: ' : '') + esc(e.message)); }
+  FA.busy = false; return got;
+}
+/* GBIF: prima chiedo quali dataset coprono Milano, poi leggo i maggiori escluso iNaturalist (già caricato) */
+function gbifGeo() { const b = bboxNow(); return 'decimalLatitude=' + b.s.toFixed(4) + ',' + b.n.toFixed(4) + '&decimalLongitude=' + b.w.toFixed(4) + ',' + b.e.toFixed(4) + '&kingdomKey=1&hasCoordinate=true&hasGeospatialIssue=false&occurrenceStatus=PRESENT'; }
+async function loadGbif() {
+  try {
+    const fc = await fetchJSON(CFG.gbif + '?' + gbifGeo() + '&limit=0&facet=datasetKey&facetLimit=8', {timeout: 30000});
+    const fct = (fc.facets || [])[0], keys = fct ? fct.counts.filter(c => c.name !== CFG.gbifInat).slice(0, 3).map(c => c.name) : [];
+    const queries = keys.length ? keys.map(k => '&datasetKey=' + k) : [''];
+    for (const q of queries) {
+      const js = await fetchJSON(CFG.gbif + '?' + gbifGeo() + q + '&limit=300', {timeout: 45000});
+      for (const r of js.results || []) {
+        if (r.datasetKey === CFG.gbifInat || (r.coordinateUncertaintyInMeters || 0) > 1000) continue;
+        const cls = r.class || '';
+        addFauna({src: 'gbif', id: r.key, lon: +r.decimalLongitude, lat: +r.decimalLatitude, grp: GRUPPI[cls] || 'altro', name: cap(r.vernacularName || ''),
+          sci: r.species || r.scientificName || '', date: String(r.eventDate || '').slice(0, 10), img: '', url: 'https://www.gbif.org/occurrence/' + r.key,
+          who: r.recordedBy || '', ds: r.datasetName || '', lic: String(r.license || '').replace(/^https?:\/\/creativecommons\.org\/(licenses|publicdomain)\//, 'CC ').replace(/\/legalcode$/, '').replace(/\//g, ' ').toUpperCase()});
+      }
+      faunaChanged();
+    }
+    src('gbif', 'GBIF', 'ok', fmt(FA.counts.gbif) + ' occorrenze caricate dai maggiori dataset non iNaturalist (' + fmt(fc.count) + ' record animali nel riquadro di Milano, iNaturalist compreso).');
+  } catch (e) { src('gbif', 'GBIF', FA.counts.gbif ? 'part' : 'err', esc(e.message)); }
+}
+/* GBIF: conteggio delle occorrenze animali dentro ogni NIL. Calcolato in anticipo da tools/gbif_nil_counts.py
+   e salvato in data/gbif_nil.json: chiederlo a GBIF a ogni visita voleva dire 88 richieste e un blocco (HTTP 429). */
+async function loadGbifNilCounts() {
+  src('gbifnil', 'GBIF, conteggi per quartiere', 'wait', 'Leggo i conteggi per quartiere…');
+  try {
+    if (!NIL.list.length) throw new Error('confini dei quartieri non disponibili');
+    const js = await fetchJSON(CFG.gbifNilCounts, {timeout: 20000}), c = js.counts || {};
+    let ok = 0, total = 0;
+    NIL.list.forEach(o => { const v = c[o.id]; if (typeof v === 'number') { o.faunaTot = v; total += v; ok++; } });
+    if (ok < NIL.list.length * 0.75) throw new Error('file incompleto (' + ok + ' quartieri su ' + NIL.list.length + ')');
+    FA.gbifNil = true;
+    src('gbifnil', 'GBIF, conteggi per quartiere', ok < NIL.list.length ? 'part' : 'ok', fmt(total) + ' occorrenze animali contate in ' + ok + ' NIL, iNaturalist ed eBird compresi. Conteggio del ' + esc(String(js.updated || '').split('-').reverse().join('/')) + '.');
+  } catch (e) {
+    NIL.list.forEach(o => { delete o.faunaTot; }); FA.gbifNil = false;
+    src('gbifnil', 'GBIF, conteggi per quartiere', 'err', esc(e.message) + ': la statistica usa il campione di punti caricati.');
+  }
+  statsChanged();
+}
+async function loadEbird(key) {
+  try {
+    const js = await fetchJSON(CFG.ebird + '?lat=' + CFG.center[0] + '&lng=' + CFG.center[1] + '&dist=12&back=30&sppLocale=it&key=' + encodeURIComponent(key), {timeout: 30000});
+    for (const r of js) addFauna({src: 'ebird', id: r.subId + r.speciesCode, lon: +r.lng, lat: +r.lat, grp: 'uccelli', name: cap(r.comName), sci: r.sciName, date: String(r.obsDt || '').slice(0, 10), img: '',
+      url: 'https://ebird.org/checklist/' + r.subId, who: '', ds: r.locName || '', lic: 'termini eBird'});
+    faunaChanged(); src('ebird', 'eBird', 'ok', fmt(FA.counts.ebird) + ' osservazioni degli ultimi 30 giorni.');
+    try { localStorage.setItem('mv-ebird', key); } catch (e) {}
+  } catch (e) { src('ebird', 'eBird', 'err', 'Richiesta fallita: ' + esc(e.message) + '. Verifica la chiave.'); }
+}
+
+/* =====================================================================
+   CLIC SULLA MAPPA: prima gli sprite, poi i poligoni
+   ===================================================================== */
+function hitAndPopup(p, latlng, fallback) {
+  const v = viewNow(), o = hitFauna(p, v);
+  if (o) { L.popup({maxWidth: 280}).setLatLng([o.lat, o.lon]).setContent(faunaPopup(o)).openOn(map); return true; }
+  const i = hitTree(p, v);
+  if (i >= 0) { L.popup({maxWidth: 300, offset: [0, v.z >= 17 ? -10 : 0]}).setLatLng([unY(T.y[i]), unX(T.x[i])]).setContent(treePopup(i)).openOn(map); return true; }
+  if (fallback) fallback();
+  return false;
+}
+function polyClick(html) { return e => { L.DomEvent.stop(e); hitAndPopup(e.containerPoint, e.latlng, () => L.popup({maxWidth: 300}).setLatLng(e.latlng).setContent(typeof html === 'function' ? html(e) : html).openOn(map)); }; }
+
+/* =====================================================================
+   LIVELLI VETTORIALI DEL COMUNE
+   ===================================================================== */
+const LY = {};
+async function ckanUrl(p) {
+  try {
+    const r = await fetchJSON(CFG.ckan + '/api/3/action/package_show?id=' + p.id, {timeout: 15000});
+    const res = r.result.resources.find(x => String(x.format).toLowerCase() === p.fmt.toLowerCase());
+    if (res) return {url: res.url, title: r.result.title, mod: (res.last_modified || r.result.metadata_modified || '').slice(0, 10)};
+  } catch (e) {}
+  return {url: CFG.ckan + p.url, title: p.id, mod: ''};
+}
+/* Livelli del Comune. Alcuni hanno una copia nel sito (data/): i NIL perché il portale a volte li serve
+   senza CORS, i parchi perché il portale li manda non compressi (5 MB, contro 180 KB della copia).
+   localFirst: la copia è la prima scelta e il portale il ripiego; altrimenti il contrario. */
+async function loadCkanGeo(key, label) {
+  src(key, label, 'wait', 'Scarico…');
+  const p = CFG.pkg[key];
+  const portal = async () => {
+    const u = await ckanUrl(p), gj = await fetchJSON(u.url, {timeout: 60000}); if (!gj.features) throw new Error('formato inatteso');
+    return [gj, esc(u.title) + (u.mod ? ' · aggiornato al ' + u.mod.split('-').reverse().join('/') : '')];
+  };
+  const local = async () => {
+    const gj = await fetchJSON(p.local, {timeout: 30000}); if (!gj.features) throw new Error('formato inatteso');
+    return [gj, 'copia nel sito del dataset del Comune (' + esc(p.id) + (p.localDate ? ', versione del ' + p.localDate : '') + ')'];
+  };
+  const order = !p.local ? [portal] : p.localFirst ? [local, portal] : [portal, local], errs = [];
+  for (const fn of order) {
+    try {
+      const [gj, note] = await fn();
+      src(key, label, 'ok', fmt(gj.features.length) + ' elementi · ' + note + (errs.length ? '. Prima fonte non leggibile: ' + errs.join('; ') : ''));
+      return gj;
+    } catch (e) { errs.push(esc(e.message)); }
+  }
+  src(key, label, 'err', errs.join('; ')); return null;
+}
+function nilPopup(o) {
+  const km = o.area / 1e6, small = o.pop != null && o.pop < CFG.smallPop, fa = o.faunaTot != null ? o.faunaTot : o.fauna;
+  const row = (a, b) => '<tr><td>' + a + '</td><td>' + b + '</td></tr>';
+  let top = '';
+  if (T.n && o.trees) { const c = new Map(); for (let i = 0; i < T.n; i++) if (T.nil[i] === o.id) c.set(T.g[i], (c.get(T.g[i]) || 0) + 1);
+    top = [...c.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([gi, k]) => esc(NOMI[T.genera[gi]] || T.genera[gi]) + ' ' + Math.round(k / o.trees * 100) + '%').join(', '); }
+  return '<div class="pop"><h3>' + esc(o.name.toUpperCase()) + '</h3><table>' +
+    row('Residenti', o.pop != null ? fmt(o.pop) + (o.popYear ? ' (' + o.popYear + ')' : '') : 'n.d.') + row('Superficie', fmt(km, 2) + ' km²') +
+    row('Alberi censiti', T.n ? fmt(o.trees) : 'n.d.') + (T.n && o.pop && !small ? row('Alberi ogni 100 residenti', fmt(o.trees / o.pop * 100, 1)) : '') +
+    (T.n ? row('Alberi per km²', fmt(o.trees / km)) : '') + (top ? row('Generi principali', top) : '') +
+    row('Parchi e giardini', fmt(o.parkM2) + ' m²' + (o.pop && !small ? ' (' + fmt(o.parkM2 / o.pop, 1) + ' per residente)' : '')) +
+    row('Fauna segnalata', fmt(fa) + (o.faunaTot != null ? ' (GBIF)' : ' (campione)')) +
+    (o.heat != null ? row('Esposizione al calore', fmt(o.heat, 2)) : '') + (o.green != null ? row('Indice di verde', fmt(o.green, 1)) : '') + '</table>' +
+    (small ? '<small>Meno di ' + fmt(CFG.smallPop) + ' residenti: i valori per abitante non sono significativi.</small>' : '') + '</div>';
+}
+function buildNilLayer() {
+  LY.nil = L.geoJSON({type: 'FeatureCollection', features: NIL.list.map(o => o.f)}, {pane: 'vec', style: f => nilStyle(NIL.byId[+f.properties.ID_NIL]),
+    onEachFeature: (f, l) => { const o = NIL.byId[+f.properties.ID_NIL]; o.layer = l; l.on('click', polyClick(() => nilPopup(o)));
+      if (!L.Browser.mobile) l.bindTooltip(o.name, {sticky: true, className: 'nil-tip', direction: 'top', opacity: 1}); }});
+}
+function buildParks(gj) {
+  for (const f of gj.features) { const c = geomCentroid(f.geometry); if (!c) continue; const id = nilOf(c[0], c[1]); if (id) { NIL.byId[id].parkM2 += +f.properties.AREA_MQ || 0; NIL.byId[id].parks++; } }
+  LY.parchi = L.geoJSON(gj, {pane: 'vec', style: {color: PAL.leaf1, weight: 1, fillColor: PAL.leaf3, fillOpacity: 0.5},
+    onEachFeature: (f, l) => l.on('click', polyClick(() => { const p = f.properties; return '<div class="pop"><h3>' + esc(String(p.PARCO || 'Area verde').toUpperCase()) + '</h3><table><tr><td>Superficie</td><td>' + fmt(+p.AREA_MQ) + ' m²</td></tr><tr><td>Perimetro</td><td>' + fmt(+p.PERIM_M) + ' m</td></tr><tr><td>Municipio</td><td>' + esc(p.ZONA) + '</td></tr></table><small>Fonte: Comune di Milano, parchi e giardini.</small></div>'; }))});
+}
+function buildPlots(key, gj, color, sprite, titolo) {
+  const grp = L.layerGroup();
+  L.geoJSON(gj, {pane: 'vec', style: {color: PAL.ink, weight: 1, fillColor: color, fillOpacity: 0.75}}).addTo(grp);
+  for (const f of gj.features) {
+    const c = geomCentroid(f.geometry); if (!c) continue; const p = f.properties, loc = p['località'] || p.localita || p[Object.keys(p).find(k => /^localit/i.test(k))] || '';
+    L.marker([c[1], c[0]], {icon: sprIcon(sprite, 26)}).bindPopup('<div class="pop"><h3>' + titolo.toUpperCase() + '</h3><div>' + esc(titleCase(loc)) + '</div><table><tr><td>Superficie</td><td>' + fmt(+p.area_mq) + ' m²</td></tr><tr><td>Municipio</td><td>' + esc(p.municipio) + '</td></tr>' + (p.data_ini ? '<tr><td>Dal</td><td>' + esc(String(p.data_ini).slice(0, 4)) + '</td></tr>' : '') + '</table><small>Fonte: Comune di Milano.</small></div>').addTo(grp);
+  }
+  LY[key] = grp;
+}
+function buildMonum(gj) {
+  const grp = L.layerGroup();
+  for (const f of gj.features) {
+    if (!f.geometry) continue; const p = f.properties, c = f.geometry.coordinates;
+    L.marker([c[1], c[0]], {icon: sprIcon(SPR.monum, 40), zIndexOffset: 500}).bindPopup('<div class="pop"><h3>' + esc(String(p['SPECIE - NOME VOLGARE'] || 'Albero monumentale').toUpperCase()) + '</h3><div class="sci">' + esc(p['SPECIE - NOME SCIENTIFICO'] || '') + '</div><span class="tag">MONUMENTALE</span><table>' +
+      '<tr><td>Dove</td><td>' + esc(p['LOCALITÀ'] || '') + '</td></tr><tr><td>Altezza</td><td>' + esc(p['ALTEZZA (m)'] || 'n.d.') + ' m</td></tr><tr><td>Circonferenza</td><td>' + esc(p['CIRCONFERENZA FUSTO (cm)'] || 'n.d.') + ' cm</td></tr>' +
+      (p['CRITERI DI MONUMENTALITÀ'] ? '<tr><td>Criteri</td><td>' + esc(p['CRITERI DI MONUMENTALITÀ']) + '</td></tr>' : '') + '</table>' +
+      (/^https:\/\/www\.comune\.milano\.it\//.test(p.Link || '') ? '<small><a href="' + esc(p.Link) + '" target="_blank" rel="noopener">Scheda del Comune</a></small>' : '') + '</div>', {maxWidth: 300}).addTo(grp);
+  }
+  LY.monum = grp;
+}
+function setLayer(key, on) {
+  ST.on[key] = on;
+  const l = LY[key];
+  if (l) { if (on) l.addTo(map); else map.removeLayer(l); }
+  if (key === 'nil' && on && LY.nil) LY.nil.bringToBack();
+  if (key === 'nomi' && labelTiles) { if (on) labelTiles.addTo(map); else map.removeLayer(labelTiles); }
+  if (key === 'alberi' && treeLayer) treeLayer.redraw();
+  if (key === 'fauna' && faunaLayer) faunaLayer.redraw();
+  updateHud();
+}
+
+/* =====================================================================
+   GLICINI: caricamento di un KML / KMZ locale (Google My Maps)
+   ===================================================================== */
+async function loadKml(file) {
+  const msg = $('#kmlmsg');
+  try {
+    let text;
+    if (/\.kmz$/i.test(file.name)) { const f = await unzipPick(await file.arrayBuffer(), /\.kml$/i); text = await new Response(f.stream).text(); } else text = await file.text();
+    const doc = new DOMParser().parseFromString(text, 'application/xml'); if (doc.querySelector('parsererror')) throw new Error('KML non valido');
+    const pms = [...doc.getElementsByTagName('Placemark')]; if (LY.glicini) map.removeLayer(LY.glicini);
+    const grp = L.layerGroup(); let n = 0;
+    for (const pm of pms) {
+      const co = pm.getElementsByTagName('coordinates')[0]; if (!co) continue;
+      const c = co.textContent.trim().split(/\s+/)[0].split(',').map(Number); if (!isFinite(c[0]) || !isFinite(c[1])) continue;
+      const tx = t => { const e = pm.getElementsByTagName(t)[0]; return e ? e.textContent : ''; }, desc = tx('description');
+      const imgs = new Set(); (desc.match(/https?:\/\/[^\s"'<>]+/g) || []).forEach(u => { if (/googleusercontent|\.(jpe?g|png|webp|gif)(\?|$)/i.test(u)) imgs.add(u); });
+      [...pm.getElementsByTagName('Data')].forEach(d => { if (/media/i.test(d.getAttribute('name') || '')) (d.textContent.match(/https?:\/\/\S+/g) || []).forEach(u => imgs.add(u)); });
+      const plain = desc.replace(/<img[^>]*>/gi, '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
+      L.marker([c[1], c[0]], {icon: sprIcon(SPR.glicine, 32, 'as-tree')}).bindPopup('<div class="pop"><h3>' + esc((tx('name') || 'Glicine').toUpperCase()) + '</h3>' + (plain ? '<div>' + esc(plain).replace(/\n/g, '<br>') + '</div>' : '') +
+        [...imgs].slice(0, 4).map(u => '<img loading="lazy" referrerpolicy="no-referrer" src="' + esc(u) + '" alt="">').join('') + '<small>Dal file ' + esc(file.name) + '</small></div>', {maxWidth: 280}).addTo(grp);
+      n++;
+    }
+    if (!n) throw new Error('nessun punto nel file');
+    LY.glicini = grp; if (ST.on.glicini) grp.addTo(map);
+    msg.textContent = n + ' glicini caricati da ' + file.name + '.';
+  } catch (e) { msg.textContent = 'Non riesco a leggere il file: ' + e.message; }
+}
+
+/* =====================================================================
+   METRICHE PER NIL, COROPLETICA, CLASSIFICA
+   ===================================================================== */
+const R_GREEN = ['#f6f1d8', '#c4e86b', '#7cc35a', '#3a8f4b', '#1f5c3a'];
+const R_WARM = ['#fff3c9', '#f6c644', '#e8853a', '#c9413f', '#7a1f2b'];
+const R_BLUE = ['#eef6f2', '#8fd0e8', '#3f7fbf', '#2f4f9a', '#1b1c2e'];
+const km2 = o => o.area / 1e6;
+const faunaN = o => o.faunaTot != null ? o.faunaTot : o.fauna;
+const METRICS = {
+  treesCap: {l: 'Alberi ogni 100 residenti', u: 'alberi / 100 ab.', f: o => (T.n && o.pop) ? o.trees / o.pop * 100 : null, cap: 1, d: 1, ramp: R_GREEN},
+  parkCap:  {l: 'Parchi e giardini: m² per residente', u: 'm² / ab.', f: o => o.pop ? o.parkM2 / o.pop : null, cap: 1, d: 1, ramp: R_GREEN},
+  treesKm:  {l: 'Alberi per km²', u: 'alberi / km²', f: o => T.n ? o.trees / km2(o) : null, d: 0, ramp: R_GREEN},
+  parkPct:  {l: 'Quota di superficie a parco', u: '% del NIL', f: o => o.parkM2 / o.area * 100, d: 1, ramp: R_GREEN},
+  allergKm: {l: 'Alberi con polline allergenico per km²', u: 'alberi / km²', f: o => T.n ? o.allerg / km2(o) : null, d: 0, ramp: R_WARM},
+  faunaKm:  {l: 'Segnalazioni di fauna per km²', u: 'segnalazioni / km²', f: o => faunaN(o) / km2(o), d: 0, ramp: R_BLUE},
+  heat:     {l: 'Esposizione al calore urbano (lug 2024)', u: 'indice 0-1', f: o => o.heat, d: 2, ramp: R_WARM},
+  green:    {l: 'Indice di verde da satellite (lug 2024)', u: 'indice', f: o => o.green, d: 1, ramp: R_GREEN},
+  popKm:    {l: 'Residenti per km²', u: 'ab. / km²', f: o => o.pop != null ? o.pop / km2(o) : null, d: 0, ramp: R_BLUE}
+};
+function metricRows(key) {
+  const M = METRICS[key];
+  return NIL.list.map(o => { const v = M.f(o); return {o, v: (v == null || !isFinite(v)) ? null : v, ex: !!(M.cap && ST.exSmall && (o.pop == null || o.pop < CFG.smallPop))}; });
+}
+function quantile(sorted, q) { if (!sorted.length) return NaN; const p = (sorted.length - 1) * q, a = Math.floor(p), b = Math.ceil(p); return sorted[a] + (sorted[b] - sorted[a]) * (p - a); }
+let CH = {key: null, breaks: [], cls: {}};
+function computeChoro() {
+  const key = ST.choro; CH = {key, breaks: [], cls: {}}; if (!key) return;
+  const rows = metricRows(key), vals = rows.filter(r => r.v != null && !r.ex).map(r => r.v).sort((a, b) => a - b);
+  CH.breaks = [0.2, 0.4, 0.6, 0.8].map(q => quantile(vals, q)); CH.min = vals[0]; CH.max = vals[vals.length - 1];
+  rows.forEach(r => { CH.cls[r.o.id] = (r.v == null || r.ex) ? -1 : CH.breaks.filter(b => r.v > b).length; });
+}
+function nilStyle(o) {
+  if (!CH.key) return {color: PAL.ink, weight: 1.2, dashArray: '4 4', fillColor: '#000', fillOpacity: 0, opacity: 0.55};
+  const c = CH.cls[o.id];
+  if (c == null || c < 0) return {color: PAL.ink, weight: 1, dashArray: '2 5', fillColor: PAL.fog, fillOpacity: 0.28, opacity: 0.6};
+  return {color: PAL.ink, weight: 1.2, dashArray: null, fillColor: METRICS[CH.key].ramp[c], fillOpacity: 0.74, opacity: 0.9};
+}
+function restyleNil() { const was = CH.key; computeChoro(); if (LY.nil) LY.nil.setStyle(f => nilStyle(NIL.byId[+f.properties.ID_NIL])); renderLegend(); if (was !== CH.key && treeLayer) treeLayer.redraw(); }
+function gini(vals) { const v = vals.slice().sort((a, b) => a - b), n = v.length, s = v.reduce((a, b) => a + b, 0); if (!n || !s) return NaN; let c = 0; v.forEach((x, i) => { c += (2 * (i + 1) - n - 1) * x; }); return c / (n * s); }
+function renderRank() {
+  const key = ST.metric, M = METRICS[key], rows = metricRows(key), ok = rows.filter(r => r.v != null && !r.ex).sort((a, b) => b.v - a.v), exN = rows.filter(r => r.ex).length;
+  const el = $('#rank'), kp = $('#rankkpi');
+  if (!ok.length) { el.innerHTML = ''; kp.innerHTML = '<p class="note">Dati non ancora disponibili per questa misura.</p>'; return; }
+  const vals = ok.map(r => r.v), s = vals.slice().sort((a, b) => a - b), mx = s[s.length - 1] || 1, p10 = quantile(s, 0.1), p90 = quantile(s, 0.9);
+  kp.innerHTML = '<div class="kpi"><div><b>' + fmt(quantile(s, 0.5), M.d) + '</b><span>quartiere mediano, ' + M.u + '</span></div><div><b>' + (p10 > 0 ? fmt(p90 / p10, 1) + '×' : 'n.d.') + '</b><span>divario tra 90° e 10° percentile</span></div>' +
+    '<div><b>' + fmt(gini(vals), 2) + '</b><span>indice di Gini tra quartieri (0 = tutti uguali)</span></div><div><b>' + ok.length + '</b><span>NIL in classifica' + (exN ? ', ' + exN + ' esclusi' : '') + '</span></div></div>' +
+    (key === 'treesCap' || key === 'treesKm' || key === 'allergKm' ? '<p class="note">' + treeCaveat() + '</p>' : '') +
+    (key === 'parkCap' || key === 'parkPct' ? '<p class="note">Conta solo i poligoni del dataset "parchi e giardini" (circa 7,7 km²), non tutto il verde pubblico. Ogni parco è attribuito al NIL in cui cade il suo centro.</p>' : '') +
+    (key === 'faunaKm' ? '<p class="warn">Le segnalazioni seguono le persone: misurano dove si osserva, prima ancora di dove vivono gli animali.</p>' : '');
+  el.innerHTML = ok.map(r => '<li data-id="' + r.o.id + '"><div class="nm">' + esc(r.o.name) + '<div class="bar" style="width:' + Math.max(2, r.v / mx * 100) + '%;background:' + M.ramp[Math.max(0, CH.key === key ? CH.cls[r.o.id] : 3)] + '"></div></div><span class="v">' + fmt(r.v, M.d) + '</span></li>').join('');
+}
+function treeCaveat() {
+  if (!T.n) return 'Alberi non ancora caricati.';
+  if (T.source === 'osm') return 'Alberi da OpenStreetMap: mappatura volontaria e disomogenea tra quartieri. Il confronto misura anche quanto ogni zona è stata mappata.';
+  return 'Solo alberi gestiti dal Comune (' + fmt(T.n) + '): mancano le piante private e le aree boscate.';
+}
+function spearman(a, b) {
+  const rk = v => { const idx = v.map((x, i) => [x, i]).sort((p, q) => p[0] - q[0]), r = new Array(v.length); idx.forEach((p, i) => { r[p[1]] = i; }); return r; };
+  const ra = rk(a), rb = rk(b), n = a.length; if (n < 3) return NaN; let d = 0; for (let i = 0; i < n; i++) d += (ra[i] - rb[i]) ** 2; return 1 - 6 * d / (n * (n * n - 1));
+}
+let SCAT = null;
+function drawScatter(xKey, yKey, logY) {
+  const cv = $('#scatter'); if (!cv) return;
+  const W = cv.clientWidth, H = cv.clientHeight, dpr = Math.min(2, window.devicePixelRatio || 1); cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const MX = METRICS[xKey], MY = METRICS[yKey], pts = NIL.list.map(o => ({o, x: MX.f(o), y: MY.f(o)})).filter(p => p.x != null && p.y != null && isFinite(p.x) && isFinite(p.y) && (!ST.exSmall || (p.o.pop || 0) >= CFG.smallPop));
+  const info = $('#scatinfo');
+  if (pts.length < 5) { g.fillStyle = PAL.slate; g.font = '12px sans-serif'; g.fillText('Dati non ancora disponibili', 12, 24); if (info) info.textContent = ''; return; }
+  const ty = v => logY ? Math.log10(1 + v) : v, xs = pts.map(p => p.x), ys = pts.map(p => ty(p.y)), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const L_ = 34, B = 26, Rr = 10, Tt = 10, sx = v => L_ + (v - x0) / (x1 - x0 || 1) * (W - L_ - Rr), sy = v => H - B - (ty(v) - y0) / (y1 - y0 || 1) * (H - B - Tt);
+  g.strokeStyle = PAL.sand; g.lineWidth = 1; for (let i = 0; i <= 4; i++) { const y = Tt + i * (H - B - Tt) / 4; g.beginPath(); g.moveTo(L_, y + .5); g.lineTo(W - Rr, y + .5); g.stroke(); }
+  g.strokeStyle = PAL.ink; g.lineWidth = 2; g.beginPath(); g.moveTo(L_, Tt); g.lineTo(L_, H - B); g.lineTo(W - Rr, H - B); g.stroke();
+  g.fillStyle = PAL.slate; g.font = '10px sans-serif'; g.textAlign = 'center'; g.fillText(MX.u + ' →', (W + L_) / 2, H - 8); g.fillText(fmt(x0, MX.d), L_, H - 14); g.textAlign = 'right'; g.fillText(fmt(x1, MX.d), W - Rr, H - 14);
+  g.save(); g.translate(11, (H - B) / 2); g.rotate(-Math.PI / 2); g.textAlign = 'center'; g.fillText(MY.u + (logY ? ' (scala log)' : '') + ' →', 0, 0); g.restore();
+  pts.forEach(p => { p.px = Math.round(sx(p.x)); p.py = Math.round(sy(p.y)); g.fillStyle = PAL.ink; g.fillRect(p.px - 3, p.py - 3, 7, 7); g.fillStyle = MY.ramp[3]; g.fillRect(p.px - 2, p.py - 2, 5, 5); });
+  SCAT = {pts, MX, MY};
+  const rho = spearman(pts.map(p => p.x), pts.map(p => p.y));
+  if (info) info.innerHTML = 'Correlazione di Spearman tra i ' + pts.length + ' quartieri: <b>' + fmt(rho, 2) + '</b> (' + (Math.abs(rho) < 0.2 ? 'praticamente nulla' : Math.abs(rho) < 0.45 ? 'debole' : Math.abs(rho) < 0.7 ? 'moderata' : 'forte') + (rho < -0.2 ? ', inversa' : '') + '). Tocca un punto per il nome.';
+}
+function scatterTap(ev) {
+  if (!SCAT) return; const cv = $('#scatter'), r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top; let best = null, bd = 400;
+  for (const p of SCAT.pts) { const d = (p.px - x) ** 2 + (p.py - y) ** 2; if (d < bd) { bd = d; best = p; } }
+  if (best) $('#scatinfo').innerHTML = '<b>' + esc(best.o.name) + '</b>: ' + fmt(best.x, SCAT.MX.d) + ' ' + SCAT.MX.u + ', ' + fmt(best.y, SCAT.MY.d) + ' ' + SCAT.MY.u;
+}
+
+/* =====================================================================
+   MODALITÀ (INCROCI)
+   ===================================================================== */
+const MODES = [
+  ['none', 'Mappa semplice', 'nil'], ['disug', 'Disuguaglianza del verde', 'parco'], ['fiori', 'Calendario delle fioriture', 'giardino'],
+  ['allergie', 'Mappa delle allergie', 'glicine'], ['fauna', 'Fauna e verde', 'uccelli'], ['calore', 'Isole di calore', 'calore']
+];
+function monthUI(id) {
+  return '<div class="bigm" id="' + id + 'lab"></div><input type="range" min="1" max="12" step="1" value="' + ST.month + '" id="' + id + '" aria-label="Mese"><div class="months" id="' + id + 'm">' + MESI3.map(m => '<i>' + m + '</i>').join('') + '</div>';
+}
+function bindMonth(id) {
+  const el = $('#' + id), upd = () => { $('#' + id + 'lab').textContent = MESI[ST.month - 1].toUpperCase(); [...$('#' + id + 'm').children].forEach((c, i) => c.classList.toggle('on', i === ST.month - 1)); };
+  el.oninput = () => { ST.month = +el.value; upd(); applyTreeState(); renderModeList(); }; upd();
+}
+function setMode(m) {
+  ST.mode = m;
+  [...$('#modes').children].forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  const ui = $('#modeui'); let h = '';
+  if (m === 'none') { ST.choro = null; h = '<p class="note">Scegli un incrocio per colorare la mappa. Gli incroci combinano fonti diverse: alberi, residenti, parchi, segnalazioni di fauna e indici satellitari.</p>'; }
+  if (m === 'disug') {
+    if (['treesCap', 'parkCap', 'treesKm', 'parkPct'].indexOf(ST.metric) < 0) ST.metric = T.n ? 'treesCap' : 'parkCap';
+    ST.choro = ST.metric;
+    h = '<h2>QUANTO VERDE A TESTA</h2><select class="full" id="dmetric">' + ['treesCap', 'parkCap', 'treesKm', 'parkPct'].map(k => '<option value="' + k + '"' + (k === ST.metric ? ' selected' : '') + '>' + METRICS[k].l + '</option>').join('') + '</select>' +
+      '<p class="note">Residenti al 31/12 dell\'ultimo anno disponibile, alberi e parchi contati dentro i confini di ogni NIL. La classifica completa è nella scheda accanto.</p><div id="dkpi"></div><button class="btn sm" id="gorank">Apri la classifica</button>';
+  }
+  if (m === 'fiori') { ST.choro = null; h = '<h2>COSA FIORISCE, E DOVE</h2>' + monthUI('fm') + '<label class="chk"><input type="checkbox" id="showy"' + (ST.showyOnly ? ' checked' : '') + '> Solo fioriture vistose</label><ul class="lg" id="modelist"></ul><p class="note">Calendario compilato a mano per genere (con qualche eccezione di specie), valido come ordine di grandezza per la Pianura Padana: lo scarto reale è di 2-3 settimane.</p>'; }
+  if (m === 'allergie') { h = '<h2>POLLINI ALLERGENICI</h2><label class="chk"><input type="checkbox" id="monly"' + (ST.monthOnly ? ' checked' : '') + '> Solo le specie in pollinazione nel mese scelto</label><div id="amwrap"' + (ST.monthOnly ? '' : ' style="display:none"') + '>' + monthUI('am') + '</div>' +
+    '<label class="chk"><input type="checkbox" id="achoro"' + (ST.choro === 'allergKm' ? ' checked' : '') + '> Colora i quartieri per densità di alberi allergenici</label><ul class="lg" id="modelist"></ul>' +
+    '<div class="box"><b>Concentrazioni di polline in aria: segnaposto</b><p class="note">Non ho trovato dati scaricabili sui pollini né da ARPA Lombardia né sul portale regionale. In Lombardia i bollettini sono pubblicati dalle ATS (per Milano, ATS Città Metropolitana) e dall\'Associazione Italiana di Aerobiologia, senza API aperta. Qui andrà la serie settimanale quando esisterà una fonte leggibile.</p></div>' +
+    '<p class="note">Il potenziale allergenico è una classificazione indicativa per genere, non un dato sanitario.</p>'; if (ST.choro !== 'allergKm') ST.choro = null; }
+  if (m === 'fauna') { ST.choro = 'faunaKm'; ST.metric = 'faunaKm'; h = '<h2>FAUNA SEGNALATA E ALBERI</h2><p class="warn">Attenzione: le segnalazioni seguono la frequentazione delle persone. Un parco molto visitato ha più osservazioni di un\'area ricca ma poco battuta.</p><canvas id="scatter"></canvas><p class="note" id="scatinfo"></p><p class="note" id="faunanote"></p>'; }
+  if (m === 'calore') { ST.choro = 'heat'; ST.metric = 'heat'; h = '<h2>CALORE E ALBERI</h2><p class="note">Indice di esposizione al calore urbano per NIL (0-1), calcolato dal progetto europeo SPOTTED su dati satellitari di luglio 2024 e pubblicato dal Comune. Risoluzione di quartiere: non descrive la singola via.</p><canvas id="scatter"></canvas><p class="note" id="scatinfo"></p>' +
+    '<div class="box"><b>Temperatura superficiale Landsat: sezione predisposta</b><p class="note">Il raster Landsat a 30 m non si può leggere in diretta da una pagina senza un servizio intermedio che lo ritagli e lo serva. Il passo successivo è un livello a tasselli da un servizio di elaborazione.</p></div>'; }
+  ui.innerHTML = h;
+  if (m === 'disug') { $('#dmetric').onchange = e => { ST.metric = ST.choro = e.target.value; $('#metric').value = ST.metric; restyleNil(); renderRank(); renderDisugKpi(); }; $('#gorank').onclick = () => showTab('classifica'); renderDisugKpi(); }
+  if (m === 'fiori') { bindMonth('fm'); $('#showy').onchange = e => { ST.showyOnly = e.target.checked; applyTreeState(); renderModeList(); }; }
+  if (m === 'allergie') { bindMonth('am'); $('#monly').onchange = e => { ST.monthOnly = e.target.checked; $('#amwrap').style.display = ST.monthOnly ? '' : 'none'; applyTreeState(); renderModeList(); };
+    $('#achoro').onchange = e => { ST.choro = e.target.checked ? 'allergKm' : null; if (ST.choro) ST.metric = 'allergKm'; $('#metric').value = ST.metric; restyleNil(); renderRank(); }; }
+  if (m === 'fauna' || m === 'calore') { $('#scatter').onclick = scatterTap; }
+  if (ST.choro && !ST.on.nil) { setLayer('nil', true); const c = $('#sw-nil'); if (c) c.checked = true; }
+  $('#metric').value = ST.metric;
+  applyTreeState(); restyleNil(); renderRank(); renderModeList(); refreshScatter(); updateHud();
+}
+function refreshScatter() {
+  if (ST.mode === 'fauna') { drawScatter('treesKm', 'faunaKm', true); const n = $('#faunanote'); if (n) n.textContent = FA.gbifNil ? 'Segnalazioni: tutte le occorrenze animali di GBIF dentro ogni quartiere (comprende iNaturalist ed eBird).' : 'Segnalazioni: campione dei punti caricati sulla mappa (' + fmt(FA.list.length) + '), in attesa dei conteggi completi di GBIF.'; }
+  if (ST.mode === 'calore') drawScatter(T.n ? 'treesKm' : 'parkPct', 'heat', false);
+}
+function renderDisugKpi() {
+  const el = $('#dkpi'); if (!el) return; const M = METRICS[ST.metric], ok = metricRows(ST.metric).filter(r => r.v != null && !r.ex).sort((a, b) => b.v - a.v);
+  if (!ok.length) { el.innerHTML = '<p class="note">Dati in arrivo…</p>'; return; }
+  const a = ok[0], z = ok[ok.length - 1];
+  el.innerHTML = '<div class="kpi"><div><b>' + fmt(a.v, M.d) + '</b><span>il più dotato: ' + esc(a.o.name) + '</span></div><div><b>' + fmt(z.v, M.d) + '</b><span>il meno dotato: ' + esc(z.o.name) + '</span></div></div>' + (ST.metric.startsWith('tree') ? '<p class="note">' + treeCaveat() + '</p>' : '');
+}
+function renderModeList() {
+  const el = $('#modelist'); if (!el) return;
+  if (!T.n) { el.innerHTML = '<li>Alberi non ancora caricati.</li>'; return; }
+  const agg = new Map();
+  for (let si = 0; si < T.species.length; si++) {
+    const m = metaOf(si); let hit = false, col, extra = '';
+    if (ST.mode === 'fiori') { hit = m.fl && m.fl.m.indexOf(ST.month) >= 0 && (!ST.showyOnly || m.fl.v); if (hit) col = m.fl.c; }
+    else { hit = m.al && (!ST.monthOnly || m.al.m.indexOf(ST.month) >= 0); if (hit) { col = ALL_COL[m.al.l]; extra = ALL_LBL[m.al.l]; } }
+    if (!hit) continue; const a = agg.get(m.genus) || {n: 0, col, extra, l: m.al ? m.al.l : 0}; a.n += T.spCount[si]; agg.set(m.genus, a);
+  }
+  const rows = [...agg.entries()].sort((a, b) => ST.mode === 'allergie' ? (b[1].l - a[1].l || b[1].n - a[1].n) : b[1].n - a[1].n), tot = rows.reduce((s, r) => s + r[1].n, 0);
+  el.innerHTML = '<li><b>' + fmt(tot) + ' alberi</b><em>' + fmt(tot / T.n * 100, 1) + '% del totale</em></li>' + (rows.length ? rows.slice(0, 14).map(([g, a]) => '<li class="clk" data-g="' + esc(g) + '"><i style="background:' + a.col + '"></i>' + esc(NOMI[g] || g) + (a.extra ? ' <small>(' + a.extra + ')</small>' : '') + '<em>' + fmt(a.n) + '</em></li>').join('') : '<li>Nessun genere tra quelli in tabella.</li>');
+}
+function renderLegend() {
+  const el = $('#legend'); let h = '';
+  if (CH.key) { const M = METRICS[CH.key], b = CH.breaks, d = M.d;
+    h = '<b>' + M.l.toUpperCase() + '</b>' + M.ramp.map((c, i) => '<div class="row"><i style="background:' + c + '"></i>' + (i === 0 ? 'fino a ' + fmt(b[0], d) : i === 4 ? 'oltre ' + fmt(b[3], d) : fmt(b[i - 1], d) + ' – ' + fmt(b[i], d)) + '</div>').join('') +
+      (M.cap && ST.exSmall ? '<div class="row"><i style="background:' + PAL.fog + ';opacity:.5"></i>meno di 1.000 residenti</div>' : ''); }
+  else if (ST.mode === 'fiori') h = '<b>IN FIORE A ' + MESI[ST.month - 1].toUpperCase() + '</b><div class="row"><i style="background:' + RAMP_F[2] + '"></i>alberi in fiore</div><div class="row"><i style="background:' + PAL.fog + ';opacity:.5"></i>altri alberi</div>';
+  else if (ST.mode === 'allergie') h = '<b>POLLINE ALLERGENICO</b>' + [3, 2, 1].map(l => '<div class="row"><i style="background:' + ALL_COL[l] + '"></i>potenziale ' + ALL_LBL[l] + '</div>').join('') + '<div class="row" style="color:var(--slate)">Da lontano: rosso se oltre il 12% degli alberi del riquadro è ad alto potenziale.</div>';
+  el.innerHTML = h;
+}
+
+/* =====================================================================
+   AGGIORNAMENTI A CASCATA
+   ===================================================================== */
+let _tcT = 0, _stT = 0;
+function applyTreeState() { recomputeStates(); if (treeLayer) treeLayer.redraw(); renderLegend(); }
+function treesChanged(final) {
+  const now = performance.now();
+  if (final || now - _tcT > 700) { _tcT = now; spMeta.length = 0; recomputeStates(); if (treeLayer) treeLayer.redraw(); }
+  if (final) { buildTreeFilters(); renderTreeNote(); renderModeList(); updateHud(); }
+  statsChanged(final);
+}
+function statsChanged(final) {
+  const now = performance.now(); if (!final && now - _stT < 1500) return; _stT = now;
+  restyleNil(); renderRank(); renderDisugKpi(); refreshScatter();
+}
+function faunaChanged() { if (faunaLayer) faunaLayer.redraw(); renderFaunaNote(); statsChanged(); }
+function hudTrees(msg, frac) {
+  let el = $('#hudtrees');
+  if (!msg) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'hudtrees'; el.className = 'hudbox'; el.innerHTML = '<span></span><div class="hudbar"><i></i></div>'; $('#hud').prepend(el); }
+  el.firstChild.textContent = msg; el.querySelector('i').style.width = (frac == null ? 100 : Math.round(Math.max(0.03, Math.min(1, frac)) * 100)) + '%';
+}
+function updateHud() {
+  let el = $('#hudzoom'); const need = map && ST.on.alberi && T.n && map.getZoom() < 15;
+  if (el) el.textContent = CH.key ? 'INGRANDISCI PER VEDERE GLI ALBERI' : 'INGRANDISCI PER I SINGOLI ALBERI';
+  if (!need) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'hudzoom'; el.className = 'hudbox'; el.textContent = 'INGRANDISCI PER I SINGOLI ALBERI'; $('#hud').appendChild(el); }
+}
+
+/* =====================================================================
+   PANNELLO DEI LIVELLI
+   ===================================================================== */
+function icoCanvas(src) { const c = mkCanvas(16, 16); c.className = 'pix'; c.getContext('2d').drawImage(src, 0, 0, src.width, src.height, 0, 0, 16, 16); return c; }
+function layerRow(key, title, desc, sprite, sub) {
+  const row = document.createElement('div'); row.className = 'lay';
+  row.appendChild(icoCanvas(sprite));
+  const d = document.createElement('div'); d.innerHTML = '<b>' + title + '</b><span>' + desc + '</span>'; row.appendChild(d);
+  const sw = document.createElement('input'); sw.type = 'checkbox'; sw.className = 'sw'; sw.id = 'sw-' + key; sw.checked = ST.on[key]; sw.setAttribute('aria-label', title); sw.onchange = () => setLayer(key, sw.checked); row.appendChild(sw);
+  $('#layers').appendChild(row);
+  if (sub) { const s = document.createElement('div'); s.className = 'sub'; s.innerHTML = sub; $('#layers').appendChild(s); }
+}
+function buildPanel() {
+  layerRow('alberi', 'ALBERI', 'Genere, specie, altezza. Uno sprite per i generi più diffusi.', treeSprite('Platanus', 'n'),
+    '<div class="warn" id="treenote">Carico gli alberi…</div><label>Genere<select id="fgen"><option value="">Tutti i generi</option></select></label><label>Specie<select id="fspe"><option value="">Tutte le specie</option></select></label>' +
+    '<label>File locale degli alberi (CSV, GeoJSON o ZIP del Comune)<input type="file" id="treefile" accept=".csv,.zip,.geojson,.json" style="margin-top:4px"></label>');
+  layerRow('monum', 'ALBERI MONUMENTALI', 'Elenco ufficiale del Comune.', SPR.monum);
+  layerRow('parchi', 'AREE VERDI', 'Parchi e giardini con le loro superfici.', SPR.parco,
+    '<label class="chk"><input type="checkbox" id="c-orti" checked> Orti urbani comunali</label><label class="chk"><input type="checkbox" id="c-giardini" checked> Giardini condivisi</label>' +
+    '<button class="btn sm" id="btipo">Tipologie e gestione</button><div id="tipo"></div>');
+  layerRow('fauna', 'FAUNA URBANA', 'Segnalazioni geolocalizzate di cittadini e ricercatori.', SPR.uccelli,
+    '<div class="warn">Le segnalazioni seguono la frequentazione delle persone, non la reale distribuzione degli animali.</div>' +
+    Object.keys(GR_LBL).map(k => '<label class="chk"><input type="checkbox" data-grp="' + k + '" checked><canvas class="pix" width="16" height="16" style="width:20px;height:20px" data-ico="' + k + '"></canvas>' + GR_LBL[k] + '</label>').join('') +
+    '<p class="note" id="faunanum"></p><button class="btn sm" id="moreinat">Carica altre 1.000 da iNaturalist</button>' +
+    '<label style="margin-top:10px">Chiave eBird (facoltativa)<input type="password" id="ebkey" placeholder="incolla la tua chiave API" autocomplete="off"></label><button class="btn sm" id="ebgo">Carica eBird</button><p class="note">La chiave è gratuita su ebird.org/api/keygen e resta solo in questo browser.</p>');
+  layerRow('nil', 'CONFINI DEI QUARTIERI', '88 Nuclei di Identità Locale (NIL), base delle statistiche.', SPR.nil);
+  layerRow('nomi', 'NOMI DI VIE E QUARTIERI', 'Etichette della mappa di base.', SPR.nomi);
+  document.querySelectorAll('[data-ico]').forEach(c => c.getContext('2d').drawImage(SPR[c.dataset.ico], 0, 0));
+  document.querySelectorAll('[data-grp]').forEach(c => { c.onchange = () => { FA.groups[c.dataset.grp] = c.checked; if (faunaLayer) faunaLayer.redraw(); }; });
+  $('#c-orti').onchange = e => setLayer('orti', e.target.checked); $('#c-giardini').onchange = e => setLayer('giardini', e.target.checked);
+  $('#fgen').onchange = e => { ST.fGenus = e.target.value; ST.fSpecies = ''; fillSpecies(); applyTreeState(); };
+  $('#fspe').onchange = e => { ST.fSpecies = e.target.value; applyTreeState(); };
+  $('#treefile').onchange = e => { const f = e.target.files[0]; if (!f) return; if (!T.done) { e.target.value = ''; hudMsg('ATTENDI LA FINE DEL CARICAMENTO DEGLI ALBERI, POI RIPROVA'); return; } loadTreesFile(f); };
+  $('#moreinat').onclick = async () => { const b = $('#moreinat'); b.disabled = true; b.textContent = 'Carico…'; await loadInat(5); b.disabled = false; b.textContent = 'Carica altre 1.000 da iNaturalist'; };
+  $('#ebgo').onclick = () => { const k = $('#ebkey').value.trim(); if (k) { src('ebird', 'eBird', 'wait', 'Richiesta in corso…'); loadEbird(k); } };
+  try { const k = localStorage.getItem('mv-ebird'); if (k) $('#ebkey').value = k; } catch (e) {}
+  $('#btipo').onclick = loadTipologie;
+  $('#kml').onchange = e => { if (e.target.files[0]) loadKml(e.target.files[0]); };
+  // modalità
+  MODES.forEach(([m, label, ic]) => { const b = document.createElement('button'); b.className = 'btn' + (m === 'none' ? ' on' : ''); b.dataset.m = m; b.textContent = label; b.onclick = () => setMode(m); $('#modes').appendChild(b); });
+  $('#modeui').addEventListener('click', e => { const li = e.target.closest('li[data-g]'); if (li) { ST.fGenus = ST.fGenus === li.dataset.g ? '' : li.dataset.g; ST.fSpecies = ''; $('#fgen').value = ST.fGenus; fillSpecies(); applyTreeState(); } });
+  // classifica
+  $('#metric').innerHTML = Object.keys(METRICS).map(k => '<option value="' + k + '">' + METRICS[k].l + '</option>').join(''); $('#metric').value = ST.metric;
+  $('#metric').onchange = e => { ST.metric = e.target.value; ST.choro = ST.metric; if (ST.mode === 'none') { ST.mode = 'disug'; [...$('#modes').children].forEach(b => b.classList.toggle('on', b.dataset.m === 'disug')); } if (!ST.on.nil) { setLayer('nil', true); $('#sw-nil').checked = true; } restyleNil(); renderRank(); };
+  $('#exsmall').onchange = e => { ST.exSmall = e.target.checked; restyleNil(); renderRank(); refreshScatter(); renderDisugKpi(); };
+  $('#rank').onclick = e => { const li = e.target.closest('li'); if (!li) return; const o = NIL.byId[+li.dataset.id]; if (!o || !o.layer) return; if (isMobile()) togglePanel(false); map.fitBounds(o.layer.getBounds(), {maxZoom: 15}); L.popup({maxWidth: 300}).setLatLng(o.layer.getBounds().getCenter()).setContent(nilPopup(o)).openOn(map); };
+  // schede, pannello, etichette
+  [...$('#tabs').children].forEach(b => { b.onclick = () => showTab(b.dataset.t); });
+  $('#bpanel').onclick = () => togglePanel();
+  $('#bgeo').onclick = locateMe;
+  if (isMobile()) togglePanel(false);
+}
+/* Geolocalizzazione: la posizione resta nel browser, non viene inviata a nessuna fonte */
+let meMarker = null, meCircle = null, _msgT = 0;
+function hudMsg(t) { let el = $('#hudmsg'); if (!el) { el = document.createElement('div'); el.id = 'hudmsg'; el.className = 'hudbox'; $('#hud').prepend(el); } el.textContent = t; clearTimeout(_msgT); _msgT = setTimeout(() => el.remove(), t.length > 60 ? 12000 : 6000); }
+function locateMe() {
+  const b = $('#bgeo');
+  if (!navigator.geolocation) { hudMsg('QUESTO BROWSER NON OFFRE LA POSIZIONE'); return; }
+  b.classList.add('on'); if (isMobile()) togglePanel(false);
+  navigator.geolocation.getCurrentPosition(p => {
+    b.classList.remove('on');
+    const ll = [p.coords.latitude, p.coords.longitude], acc = p.coords.accuracy || 0;
+    if (meMarker) { map.removeLayer(meMarker); map.removeLayer(meCircle); }
+    meCircle = L.circle(ll, {radius: acc, pane: 'vec', color: PAL.water, weight: 2, dashArray: '4 4', fillColor: PAL.sky, fillOpacity: 0.18, interactive: false}).addTo(map);
+    meMarker = L.marker(ll, {icon: L.divIcon({className: 'me-ico', iconSize: [20, 20], iconAnchor: [10, 10], html: '<i></i>'}), zIndexOffset: 1000, interactive: false}).addTo(map);
+    const nid = NIL.list.length ? nilOf(ll[1], ll[0]) : 0;
+    map.setView(ll, Math.max(map.getZoom(), acc > 300 ? 15 : 17));
+    hudMsg(nid ? 'SEI A ' + NIL.byId[nid].name.toUpperCase() + ' (±' + Math.round(acc) + ' M)' : 'SEI FUORI DAL COMUNE DI MILANO');
+  }, e => {
+    b.classList.remove('on');
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    hudMsg(e.code === 1 ? (ios ? 'POSIZIONE NEGATA. SU IPHONE: IMPOSTAZIONI › PRIVACY E SICUREZZA › LOCALIZZAZIONE › SITI WEB DI SAFARI, POI RICARICA' : 'POSIZIONE NEGATA: CONSENTILA PER QUESTO SITO DALLE IMPOSTAZIONI DEL BROWSER, POI RICARICA') : e.code === 3 ? 'POSIZIONE NON ARRIVATA IN TEMPO' : 'POSIZIONE NON DISPONIBILE');
+  }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 30000});
+}
+function showTab(t) { [...$('#tabs').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 't-' + t)); if (t === 'incroci') refreshScatter(); togglePanel(true); }
+function togglePanel(open) { const p = $('#panel'), o = open == null ? p.classList.contains('closed') : open; p.classList.toggle('closed', !o); $('#bpanel').classList.toggle('on', o); }
+function buildTreeFilters() {
+  const sel = $('#fgen'); if (!sel) return;
+  const gs = T.genera.map((g, i) => [g, T.gCount[i]]).sort((a, b) => b[1] - a[1]);
+  sel.innerHTML = '<option value="">Tutti i generi (' + fmt(T.n) + ')</option>' + gs.map(([g, n]) => '<option value="' + esc(g) + '">' + esc(g) + (NOMI[g] ? ' · ' + esc(NOMI[g]) : '') + ' (' + fmt(n) + ')</option>').join('');
+  if (!T.gIdx.has(ST.fGenus)) ST.fGenus = ''; sel.value = ST.fGenus; fillSpecies();
+}
+function fillSpecies() {
+  const sel = $('#fspe'), gi = ST.fGenus ? T.gIdx.get(ST.fGenus) : -1;
+  let sp = T.species.map((s, i) => [s, T.spCount[i], T.spGenus[i]]); if (gi >= 0) sp = sp.filter(s => s[2] === gi);
+  sp.sort((a, b) => b[1] - a[1]); sp = sp.slice(0, 400);
+  sel.innerHTML = '<option value="">Tutte le specie' + (gi >= 0 ? ' di ' + esc(ST.fGenus) : '') + '</option>' + sp.map(s => '<option value="' + esc(s[0]) + '">' + esc(s[0]) + ' (' + fmt(s[1]) + ')</option>').join('');
+  sel.value = ST.fSpecies;
+}
+function renderTreeNote() {
+  const el = $('#treenote'); if (!el) return;
+  if (!T.n) el.innerHTML = '<b>Alberi non disponibili.</b> Il dataset del Comune oggi non è pubblicato e le fonti alternative non hanno risposto. Puoi caricare qui sotto il file ufficiale, se lo hai.';
+  else if (T.source === 'osm') el.innerHTML = '<b>' + fmt(T.n) + ' alberi da OpenStreetMap</b>, in attesa che il Comune ripubblichi il suo censimento. Mappatura volontaria e incompleta; la specie è nota per ' + fmt(T.withSpecies / T.n * 100, 0) + '% dei punti.';
+  else el.innerHTML = '<b>' + fmt(T.n) + ' alberi</b> da ' + T.sourceNote + '. Comprende solo le piante gestite dal Comune: mancano quelle private e le aree boscate.';
+}
+function renderFaunaNote() { const el = $('#faunanum'); if (el) el.textContent = fmt(FA.list.length) + ' segnalazioni sulla mappa: ' + fmt(FA.counts.inat) + ' iNaturalist, ' + fmt(FA.counts.gbif) + ' GBIF' + (FA.counts.ebird ? ', ' + fmt(FA.counts.ebird) + ' eBird' : '') + '.'; }
+async function loadTipologie() {
+  const el = $('#tipo'); el.innerHTML = '<p class="note">Carico…</p>';
+  try {
+    const js = await fetchJSON(CFG.ckan + '/api/3/action/datastore_search?resource_id=' + CFG.rs.tipo + '&limit=5000&fields=Classificazione,AFFIDATARIO,Superficie%20totale%20in%20mq', {timeout: 40000});
+    const agg = (f) => { const m = new Map(); for (const r of js.result.records) { const k = r[f] || 'Non indicato', v = num(String(r['Superficie totale in mq'] || '').replace(/\./g, '')) || 0; const a = m.get(k) || [0, 0]; a[0] += v; a[1]++; m.set(k, a); } return [...m.entries()].sort((a, b) => b[1][0] - a[1][0]).slice(0, 8); };
+    const tb = (t, rows) => '<table class="tbl"><tr><th>' + t + '</th><th>ettari</th></tr>' + rows.map(r => '<tr><td>' + esc(r[0]) + ' <small>(' + r[1][1] + ')</small></td><td>' + fmt(r[1][0] / 1e4, 1) + '</td></tr>').join('') + '</table>';
+    el.innerHTML = '<p class="note">Censimento delle aree verdi comunali del 2014 (' + fmt(js.result.records.length) + ' aree), non georeferenziato: per questo è una tabella e non un livello.</p>' + tb('Classificazione', agg('Classificazione')) + tb('Affidatario', agg('AFFIDATARIO'));
+    src('tipo', 'Aree verdi per tipologia (2014)', 'ok', fmt(js.result.records.length) + ' aree · Comune di Milano, ds339.');
+  } catch (e) { el.innerHTML = '<p class="note">Non disponibile: ' + esc(e.message) + '</p>'; src('tipo', 'Aree verdi per tipologia (2014)', 'err', esc(e.message)); }
+}
+
+function renderStatic() {
+  $('#credits').innerHTML = '<ul style="padding-left:18px;margin:6px 0;font-size:13px">' +
+    '<li><b>Comune di Milano, Open Data</b> (dati.comune.milano.it): confini dei NIL, residenti per NIL, parchi e giardini, orti urbani, giardini condivisi, alberi monumentali, aree verdi per tipologia, indici di calore e di verde per NIL (elaborazione progetto SPOTTED), censimento degli alberi (dataset ds2484 aggiornato al 31/03/2024, ritirato dal portale: il sito ne pubblica una copia ridotta alle colonne usate). Licenza <a href="https://creativecommons.org/licenses/by/4.0/deed.it" target="_blank" rel="noopener">CC BY 4.0</a>.</li>' +
+    '<li><b>iNaturalist</b> (inaturalist.org): osservazioni e fotografie dei singoli utenti, ciascuna con la propria licenza indicata nella scheda. Uso tramite API pubblica.</li>' +
+    '<li><b>GBIF</b> (gbif.org): occorrenze dai dataset aderenti, con licenze CC0, CC BY o CC BY-NC indicate per record. GBIF.org, Occurrence Search.</li>' +
+    '<li><b>eBird</b> (Cornell Lab of Ornithology): solo se inserisci una tua chiave, secondo i termini d\'uso dell\'API.</li>' +
+    '<li><b>OpenStreetMap</b>: dati © OpenStreetMap contributors, licenza <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">ODbL</a>, per la mappa di base e, come ripiego, per gli alberi (Overpass API).</li>' +
+    '<li><b>CARTO</b>: tasselli della mappa di base (Positron), © CARTO.</li>' +
+    '<li><b>Leaflet</b> 1.9.4 (BSD-2) per la mappa; font Press Start 2P (SIL OFL) per i titoli.</li>' +
+    '<li>Sprite e grafica pixel art: originali, generati dal codice della pagina.</li></ul>';
+  $('#method').innerHTML = '<ul style="padding-left:18px;margin:6px 0;font-size:13px">' +
+    '<li>I dati arrivano dalle fonti all\'apertura della pagina. Fanno eccezione il censimento degli alberi, di cui il sito pubblica una copia perché il Comune l\'ha ritirato dal portale, e le tabelle di fioritura, potenziale allergenico e nomi comuni, scritte a mano e da considerare approssimazioni.</li>' +
+    '<li>Gli alberi sono solo quelli gestiti dal Comune. Il verde privato e le aree boscate non compaiono, e pesano molto in alcuni quartieri.</li>' +
+    '<li>I valori per abitante escludono di norma i NIL con meno di 1.000 residenti, dove un parco e poche case producono numeri fuori scala.</li>' +
+    '<li>Le superfici a parco vengono dal solo dataset "parchi e giardini"; ogni area è assegnata al NIL del suo centro.</li>' +
+    '<li>La fauna è un insieme di segnalazioni volontarie: descrive lo sforzo di osservazione almeno quanto la presenza degli animali.</li>' +
+    '<li>Il calore è un indice per quartiere di luglio 2024, non una temperatura misurata via per via.</li></ul>';
+}
+
+/* =====================================================================
+   AVVIO
+   ===================================================================== */
+async function main() {
+  Loader.init(); buildSprites();
+  if (typeof L === 'undefined') { Loader.msg('Non riesco a caricare la libreria della mappa (Leaflet). Serve una connessione a internet.'); return; }
+  initMap(); renderStatic(); buildPanel();
+  treeLayer = new SpriteLayer(drawTrees).addTo(map); faunaLayer = new SpriteLayer(drawFauna).addTo(map);
+  src('nil', 'Confini dei NIL', 'wait', ''); src('pop', 'Residenti per NIL', 'wait', ''); src('parchi', 'Parchi e giardini', 'wait', ''); src('orti', 'Orti urbani', 'wait', ''); src('giardini', 'Giardini condivisi', 'wait', '');
+  src('monum', 'Alberi monumentali', 'wait', ''); src('indici', 'Indici di calore e di verde', 'wait', ''); src('alberi', 'Alberi', 'wait', ''); src('inat', 'iNaturalist', 'wait', ''); src('gbif', 'GBIF', 'wait', '');
+  src('ebird', 'eBird', 'off', 'Richiede una chiave personale: inseriscila nel livello Fauna.');
+  src('pollini', 'Pollini (ARPA / ATS)', 'off', 'Nessuna fonte aperta e leggibile trovata: sezione predisposta.');
+  src('landsat', 'Temperatura Landsat', 'off', 'Non integrabile in diretta senza un servizio intermedio: sezione predisposta.');
+  const tk = {nil: Loader.task('Confini dei quartieri', 2), pop: Loader.task('Residenti', 1), parchi: Loader.task('Parchi e giardini', 2), orti: Loader.task('Orti urbani', 1), giardini: Loader.task('Giardini condivisi', 1),
+    monum: Loader.task('Alberi monumentali', 1), indici: Loader.task('Calore e verde', 1), alberi: Loader.task('Alberi', 4), fauna: Loader.task('Fauna', 3)};
+  const hard = setTimeout(() => Loader.finish(), 45000);
+
+  // 1. NIL: servono a tutto il resto
+  const nilGj = await loadCkanGeo('nil', 'Confini dei NIL');
+  if (nilGj) { setNil(nilGj); buildNilLayer(); if (ST.on.nil) LY.nil.addTo(map); map.fitBounds(LY.nil.getBounds(), isMobile() ? {padding: [6, 6]} : {paddingTopLeft: [360, 10], paddingBottomRight: [10, 10]}); }
+  tk.nil.end('Quartieri tracciati');
+
+  // 2. tutto il resto in parallelo
+  const pPop = (async () => {
+    try {
+      if (!NIL.list.length) throw new Error('confini dei quartieri non disponibili');
+      const id = CFG.rs.pop, sql = 'SELECT "IdNil", SUM("Residenti") AS pop, MAX("Anno") AS anno FROM "' + id + '" WHERE "Anno" = (SELECT MAX("Anno") FROM "' + id + '") GROUP BY "IdNil"';
+      const js = await fetchJSON(CFG.ckan + '/api/3/action/datastore_search_sql?sql=' + encodeURIComponent(sql), {timeout: 40000});
+      let tot = 0, yr = ''; for (const r of js.result.records) { const o = NIL.byId[+r.IdNil]; if (o) { o.pop = +r.pop; o.popYear = r.anno; tot += +r.pop; yr = r.anno; } }
+      if (!tot) throw new Error('nessun residente attribuito ai quartieri');
+      src('pop', 'Residenti per NIL', 'ok', fmt(tot) + ' residenti al 31/12/' + esc(yr) + ' · Comune di Milano, ds27 (interrogazione SQL sul DataStore).');
+    } catch (e) { src('pop', 'Residenti per NIL', 'err', esc(e.message)); }
+    tk.pop.end('Residenti contati'); statsChanged(true);
+  })();
+  const pIdx = (async () => {
+    try {
+      const get = async (rid, f) => { const js = await fetchJSON(CFG.ckan + '/api/3/action/datastore_search?resource_id=' + rid + '&limit=200', {timeout: 30000}); for (const r of js.result.records) { const o = NIL.byId[+r.ID_NIL]; if (o) o[f] = +r.value; } };
+      if (!NIL.list.length) throw new Error('confini dei quartieri non disponibili');
+      await Promise.all([get(CFG.rs.heat, 'heat'), get(CFG.rs.green, 'green')]);
+      src('indici', 'Indici di calore e di verde', 'ok', 'Per NIL, luglio 2024 · Comune di Milano su elaborazione SPOTTED (ds2811, ds2813).');
+    } catch (e) { src('indici', 'Indici di calore e di verde', 'err', esc(e.message)); }
+    tk.indici.end('Indici satellitari letti'); statsChanged(true);
+  })();
+  const pParchi = loadCkanGeo('parchi', 'Parchi e giardini').then(gj => { if (gj) { buildParks(gj); if (ST.on.parchi) LY.parchi.addTo(map); if (LY.nil) LY.nil.bringToBack(); } tk.parchi.end('Parchi disegnati'); statsChanged(true); });
+  const pOrti = loadCkanGeo('orti', 'Orti urbani').then(gj => { if (gj) { buildPlots('orti', gj, PAL.orange, SPR.orto, 'Orto urbano comunale'); if (ST.on.orti) LY.orti.addTo(map); } tk.orti.end('Orti seminati'); });
+  const pGiard = loadCkanGeo('giardini', 'Giardini condivisi').then(gj => { if (gj) { buildPlots('giardini', gj, PAL.pink, SPR.giardino, 'Giardino condiviso'); if (ST.on.giardini) LY.giardini.addTo(map); } tk.giardini.end('Giardini condivisi'); });
+  const pMon = loadCkanGeo('monum', 'Alberi monumentali').then(gj => { if (gj) { buildMonum(gj); if (ST.on.monum) LY.monum.addTo(map); } tk.monum.end('Alberi monumentali'); });
+  loadTrees(); firstTrees.then(() => tk.alberi.end(T.n ? 'Alberi piantati' : 'Alberi non disponibili'));
+  const pFauna = loadInat(1).then(() => { tk.fauna.end('Fauna avvistata'); loadGbif(); loadGbifNilCounts(); });
+
+  // la mappa si apre quando i livelli di base sono pronti; alberi e fauna possono proseguire dietro
+  const treesSoon = Promise.race([firstTrees, sleep(14000)]), faunaSoon = Promise.race([pFauna, sleep(9000)]);
+  await Promise.all([pPop, pIdx, pParchi, pOrti, pGiard, pMon, treesSoon, faunaSoon]);
+  clearTimeout(hard); Loader.msg('Pronto!'); Loader.finish();
+  setMode('none');
+  // altre 400 osservazioni iNaturalist dopo l'apertura: una pagina sola basta per partire
+  pFauna.then(() => sleep(1100)).then(() => loadInat(2));
+}
+window.addEventListener('DOMContentLoaded', main);
+
+</script>
+</body>
+</html>
