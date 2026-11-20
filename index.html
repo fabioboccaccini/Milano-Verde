@@ -755,7 +755,7 @@ const Loader = {
     requestAnimationFrame(loop);
   },
   task(label, w) { this.total += w; const self = this; let fin = false; return {end(msg) { if (fin) return; fin = true; self.done += w; self.msg(msg || label); }}; },
-  msg(m, now) { if (now) { const el = $('#lmsg'); if (el) el.textContent = m; return; } this.queue.push({at: this.total ? this.done / this.total : 0, m}); this.queue.sort((a, b) => a.at - b.at); },
+  msg(m, now) { if (this.ready && !now) return; if (now) { const el = $('#lmsg'); if (el) el.textContent = m; return; } this.queue.push({at: this.total ? this.done / this.total : 0, m}); this.queue.sort((a, b) => a.at - b.at); },
   finish() { this.ready = true; this.done = this.total; this.queue.push({at: 1, m: 'Pronto!'}); },
   // a caricamento completo START lampeggia, poi si preme da solo
   autoStart() {
