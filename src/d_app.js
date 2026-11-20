@@ -109,7 +109,8 @@ function hitTree(p, v) {
   return best;
 }
 /* Wikipedia: scheda per specie (o per genere) preparata da tools/wiki_species.py */
-let WIKI = null;
+let WIKI = null, WIKIF = null;
+function wikiFaunaOf(sci) { if (!WIKIF || !sci) return null; const p = String(sci).split(/\s+/); return WIKIF[p.slice(0, 2).join(' ')] || WIKIF[p[0]] || null; }
 function wikiOf(si) { if (!WIKI) return null; const full = T.species[si]; return WIKI[full] || WIKI[full.split(' ')[0]] || null; }
 function wikiPhoto(w) {
   if (!w || !w.i) return '';
@@ -170,13 +171,15 @@ function hitFauna(p, v) {
   return best;
 }
 function faunaPopup(o) {
-  const srcL = {inat: 'iNaturalist', gbif: 'GBIF', ebird: 'eBird (via GBIF)'}[o.src], nil = NIL.byId[o.nil];
+  const srcL = {inat: 'iNaturalist', gbif: 'GBIF', ebird: 'eBird (via GBIF)'}[o.src], nil = NIL.byId[o.nil], w = wikiFaunaOf(o.sci);
+  // la foto dell'osservatore, se c'è, resta la principale; altrimenti quella della voce di Wikipedia
   return '<div class="pop"><h3>' + esc((o.name || o.sci || 'Animale').toUpperCase()) + '</h3>' + (o.sci ? '<div class="sci">' + esc(o.sci) + '</div>' : '') +
-    (o.img ? '<img loading="lazy" src="' + esc(o.img) + '" alt="">' : '') +
+    (o.img ? '<img loading="lazy" src="' + esc(o.img) + '" alt="">' : wikiPhoto(w)) +
     '<table><tr><td>Gruppo</td><td>' + GR_LBL[o.grp] + '</td></tr>' + (o.date ? '<tr><td>Data</td><td>' + esc(o.date) + '</td></tr>' : '') +
     (nil ? '<tr><td>Quartiere</td><td>' + esc(nil.name) + '</td></tr>' : '') + (o.who ? '<tr><td>Osservatore</td><td>' + esc(o.who) + '</td></tr>' : '') +
-    (o.ds ? '<tr><td>Dataset</td><td>' + esc(o.ds) + '</td></tr>' : '') + '</table>' +
-    '<small>' + srcL + (o.lic ? ' · licenza ' + esc(o.lic) : '') + (o.url ? ' · <a href="' + esc(o.url) + '" target="_blank" rel="noopener">scheda originale</a>' : '') + '</small></div>';
+    (o.ds ? '<tr><td>Dataset</td><td>' + esc(o.ds) + '</td></tr>' : '') + '</table>' + wikiText(w) +
+    '<small>' + srcL + (o.lic ? ' · licenza ' + esc(o.lic) : '') + (o.url ? ' · <a href="' + esc(o.url) + '" target="_blank" rel="noopener">scheda originale</a>' : '') +
+    (w ? '. ' + (o.img ? 'Testo' : 'Testo e foto') + ' da Wikipedia.' : '') + '</small></div>';
 }
 const bboxNow = () => NIL.bbox || CFG.bbox;
 async function loadInat(pages) {

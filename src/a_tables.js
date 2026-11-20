@@ -37,6 +37,7 @@ const CFG = {
   overpass: ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'],
   inat: 'https://api.inaturalist.org/v1/observations',
   gbif: 'https://api.gbif.org/v1/occurrence/search',
+  wikiFauna: 'data/wiki_fauna.json', // lo stesso per le specie animali: tools/wiki_fauna.py
   wiki: 'data/wiki.json', // voce di Wikipedia, foto e licenza per specie: tools/wiki_species.py
   gbifNilCounts: 'data/gbif_nil.json', // conteggi per NIL precalcolati con tools/gbif_nil_counts.py
   gbifInat: '50c9509d-22c7-4a22-a47d-8c48425ef4a7', // dataset iNaturalist dentro GBIF: escluso per non contare due volte

@@ -226,7 +226,12 @@ function buildPanel() {
   $('#fspe').onchange = e => { ST.fSpecies = e.target.value; applyTreeState(); };
   $('#treefile').onchange = e => { const f = e.target.files[0]; if (!f) return; if (!T.done) { e.target.value = ''; hudMsg('ATTENDI LA FINE DEL CARICAMENTO DEGLI ALBERI, POI RIPROVA'); return; } loadTreesFile(f); };
   $('#moreinat').onclick = async () => { const b = $('#moreinat'); b.disabled = true; b.textContent = 'Carico…'; await loadInat(5); b.disabled = false; b.textContent = 'Carica altre 1.000 da iNaturalist'; };
-  $('#btipo').onclick = loadTipologie;
+  // Tipologie e gestione: il pulsante apre e chiude la tabella; il contenuto si scarica una volta sola
+  $('#btipo').onclick = () => {
+    const b = $('#btipo'), el = $('#tipo'), open = b.classList.toggle('on');
+    if (!open) { el.style.display = 'none'; return; }
+    el.style.display = ''; if (!el.dataset.loaded) loadTipologie();
+  };
   $('#kml').onchange = e => { if (e.target.files[0]) loadKml(e.target.files[0]); };
   // modalità
   MODES.forEach(([m, label, ic]) => { const b = document.createElement('button'); b.className = 'btn' + (m === 'none' ? ' on' : ''); b.dataset.m = m; b.textContent = label; b.onclick = () => setMode(m); $('#modes').appendChild(b); });
@@ -337,6 +342,7 @@ async function loadTipologie() {
     const js = await fetchJSON(CFG.ckan + '/api/3/action/datastore_search?resource_id=' + CFG.rs.tipo + '&limit=5000&fields=Classificazione,AFFIDATARIO,Superficie%20totale%20in%20mq', {timeout: 40000});
     const agg = (f) => { const m = new Map(); for (const r of js.result.records) { const k = r[f] || 'Non indicato', v = num(String(r['Superficie totale in mq'] || '').replace(/\./g, '')) || 0; const a = m.get(k) || [0, 0]; a[0] += v; a[1]++; m.set(k, a); } return [...m.entries()].sort((a, b) => b[1][0] - a[1][0]).slice(0, 8); };
     const tb = (t, rows) => '<table class="tbl"><tr><th>' + t + '</th><th>ettari</th></tr>' + rows.map(r => '<tr><td>' + esc(r[0]) + ' <small>(' + r[1][1] + ')</small></td><td>' + fmt(r[1][0] / 1e4, 1) + '</td></tr>').join('') + '</table>';
+    el.dataset.loaded = '1';
     el.innerHTML = '<p class="note">Censimento delle aree verdi comunali del 2014 (' + fmt(js.result.records.length) + ' aree), non georeferenziato: per questo è una tabella e non un livello.</p>' + tb('Classificazione', agg('Classificazione')) + tb('Affidatario', agg('AFFIDATARIO'));
     src('tipo', 'Aree verdi per tipologia (2014)', 'ok', fmt(js.result.records.length) + ' aree · Comune di Milano, ds339.');
   } catch (e) { el.innerHTML = '<p class="note">Non disponibile: ' + esc(e.message) + '</p>'; src('tipo', 'Aree verdi per tipologia (2014)', 'err', esc(e.message)); }
@@ -348,7 +354,7 @@ function renderStatic() {
     '<li><b>iNaturalist</b> (inaturalist.org): osservazioni e fotografie dei singoli utenti, ciascuna con la propria licenza indicata nella scheda. Uso tramite API pubblica.</li>' +
     '<li><b>GBIF</b> (gbif.org): occorrenze dai dataset aderenti, con licenze CC0, CC BY o CC BY-NC indicate per record. GBIF.org, Occurrence Search.</li>' +
     '<li><b>eBird</b> (Cornell Lab of Ornithology): osservazioni di uccelli dal dataset eBird Observation Dataset pubblicato su GBIF, con la licenza indicata per record.</li>' +
-    '<li><b>Wikipedia e Wikimedia Commons</b>: nei popup degli alberi, la prima frase della voce (testo CC BY-SA 4.0, con link alla voce) e una foto, con autore e licenza indicati sotto l\'immagine.</li>' +
+    '<li><b>Wikipedia e Wikimedia Commons</b>: nei popup di alberi e animali, la prima frase della voce (testo CC BY-SA 4.0, con link alla voce) e una foto, con autore e licenza indicati sotto l\'immagine.</li>' +
     '<li><b>OpenStreetMap</b>: dati © OpenStreetMap contributors, licenza <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">ODbL</a>, per la mappa di base e, come ripiego, per gli alberi (Overpass API).</li>' +
     '<li><b>CARTO</b>: tasselli della mappa di base (Positron), © CARTO.</li>' +
     '<li><b>Leaflet</b> 1.9.4 (BSD-2) per la mappa; font Press Start 2P (SIL OFL) per i titoli.</li>' +
@@ -419,6 +425,7 @@ async function main() {
   clearTimeout(hard); Loader.finish();
   setMode('none');
   setTimeout(() => locateMe(true), 1900); // dopo la chiusura della schermata di caricamento (START si preme da solo)
+  fetchJSON(CFG.wikiFauna, {timeout: 30000}).then(j => { WIKIF = j.species || null; }).catch(() => {});
   fetchJSON(CFG.wiki, {timeout: 30000}).then(j => { WIKI = j.species || null; const n = WIKI ? Object.keys(WIKI).length : 0;
     src('wiki', 'Wikipedia, schede delle specie', n ? 'ok' : 'err', fmt(n) + ' schede con testo, link e foto (dove disponibile), raccolte il ' + esc(String(j.updated || '').split('-').reverse().join('/')) + '.'); })
     .catch(e => src('wiki', 'Wikipedia, schede delle specie', 'err', esc(e.message) + ': i popup degli alberi restano senza foto.'));
