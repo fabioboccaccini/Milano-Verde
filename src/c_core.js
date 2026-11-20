@@ -145,7 +145,9 @@ function initMap() {
   map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
   // su telefono i crediti vanno in basso a sinistra, piccoli, lontani dagli avvisi in basso a destra
   if (isMobile()) { map.attributionControl.setPosition('bottomleft'); map.attributionControl.setPrefix(false); }
-  map.on('click', e => { hitAndPopup(e.containerPoint, e.latlng); });
+  // su telefono un tocco sulla mappa con il pannello aperto lo chiude e basta
+  map.on('preclick', () => { if (isMobile() && !$('#panel').classList.contains('closed')) { togglePanel(false); _panelClosedAt = performance.now(); } });
+  map.on('click', e => { if (performance.now() - _panelClosedAt < 400) return; hitAndPopup(e.containerPoint, e.latlng); });
   map.on('popupclose', () => { _popClosedAt = performance.now(); });
   // le icone a sprite (glicini, orti, giardini, monumentali) si rimpiccioliscono allontanandosi
   const mk = () => { const z = map.getZoom(); map.getContainer().style.setProperty('--mk', z <= 11 ? 0.35 : z === 12 ? 0.45 : z === 13 ? 0.6 : z === 14 ? 0.75 : z === 15 ? 0.9 : z === 16 ? 1.05 : z === 17 ? 1.2 : 1.4);

@@ -267,9 +267,9 @@ function hitAndPopup(p, latlng, fallback) {
 }
 /* Un tocco fuori da una scheda aperta serve a chiuderla: Leaflet la chiude prima che arrivi il clic, quindi se
    una scheda si è appena chiusa il clic su un quartiere o un parco non ne apre un'altra. Alberi e fauna sì. */
-let _popClosedAt = 0;
+let _popClosedAt = 0, _panelClosedAt = 0;
 function polyClick(html) { return e => {
-  L.DomEvent.stop(e); const closing = performance.now() - _popClosedAt < 400;
+  L.DomEvent.stop(e); if (performance.now() - _panelClosedAt < 400) return; const closing = performance.now() - _popClosedAt < 400;
   hitAndPopup(e.containerPoint, e.latlng, closing ? null : () => L.popup({maxWidth: 300}).setLatLng(e.latlng).setContent(typeof html === 'function' ? html(e) : html).openOn(map));
 }; }
 
