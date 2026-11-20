@@ -214,6 +214,7 @@ function buildPanel() {
     '<p class="note" id="faunanum"></p><button class="btn sm" id="moreinat">Carica altre 1.000 da iNaturalist</button>' +
     '<label style="margin-top:10px">Chiave eBird (facoltativa)<input type="password" id="ebkey" placeholder="incolla la tua chiave API" autocomplete="off"></label><button class="btn sm" id="ebgo">Carica eBird</button><p class="note">La chiave è gratuita su ebird.org/api/keygen e resta solo in questo browser.</p>');
   layerRow('nil', 'CONFINI DEI QUARTIERI', '88 Nuclei di Identità Locale (NIL), base delle statistiche.', SPR.nil);
+  layerRow('nomi', 'NOMI DI VIE E QUARTIERI', 'Etichette della mappa di base.', SPR.nomi);
   document.querySelectorAll('[data-ico]').forEach(c => c.getContext('2d').drawImage(SPR[c.dataset.ico], 0, 0));
   document.querySelectorAll('[data-grp]').forEach(c => { c.onchange = () => { FA.groups[c.dataset.grp] = c.checked; if (faunaLayer) faunaLayer.redraw(); }; });
   $('#c-orti').onchange = e => setLayer('orti', e.target.checked); $('#c-giardini').onchange = e => setLayer('giardini', e.target.checked);
@@ -236,13 +237,12 @@ function buildPanel() {
   // schede, pannello, etichette
   [...$('#tabs').children].forEach(b => { b.onclick = () => showTab(b.dataset.t); });
   $('#bpanel').onclick = () => togglePanel();
-  $('#blabels').onclick = () => { if (!labelTiles) return; const on = map.hasLayer(labelTiles); if (on) map.removeLayer(labelTiles); else labelTiles.addTo(map); $('#blabels').classList.toggle('on', !on); };
   $('#bgeo').onclick = locateMe;
   if (isMobile()) togglePanel(false);
 }
 /* Geolocalizzazione: la posizione resta nel browser, non viene inviata a nessuna fonte */
 let meMarker = null, meCircle = null, _msgT = 0;
-function hudMsg(t) { let el = $('#hudmsg'); if (!el) { el = document.createElement('div'); el.id = 'hudmsg'; el.className = 'hudbox'; $('#hud').prepend(el); } el.textContent = t; clearTimeout(_msgT); _msgT = setTimeout(() => el.remove(), 6000); }
+function hudMsg(t) { let el = $('#hudmsg'); if (!el) { el = document.createElement('div'); el.id = 'hudmsg'; el.className = 'hudbox'; $('#hud').prepend(el); } el.textContent = t; clearTimeout(_msgT); _msgT = setTimeout(() => el.remove(), t.length > 60 ? 12000 : 6000); }
 function locateMe() {
   const b = $('#bgeo');
   if (!navigator.geolocation) { hudMsg('QUESTO BROWSER NON OFFRE LA POSIZIONE'); return; }
@@ -258,7 +258,8 @@ function locateMe() {
     hudMsg(nid ? 'SEI A ' + NIL.byId[nid].name.toUpperCase() + ' (±' + Math.round(acc) + ' M)' : 'SEI FUORI DAL COMUNE DI MILANO');
   }, e => {
     b.classList.remove('on');
-    hudMsg(e.code === 1 ? 'PERMESSO NEGATO: ABILITA LA POSIZIONE PER QUESTA PAGINA' : e.code === 3 ? 'POSIZIONE NON ARRIVATA IN TEMPO' : 'POSIZIONE NON DISPONIBILE');
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    hudMsg(e.code === 1 ? (ios ? 'POSIZIONE NEGATA. SU IPHONE: IMPOSTAZIONI › PRIVACY E SICUREZZA › LOCALIZZAZIONE › SITI WEB DI SAFARI, POI RICARICA' : 'POSIZIONE NEGATA: CONSENTILA PER QUESTO SITO DALLE IMPOSTAZIONI DEL BROWSER, POI RICARICA') : e.code === 3 ? 'POSIZIONE NON ARRIVATA IN TEMPO' : 'POSIZIONE NON DISPONIBILE');
   }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 30000});
 }
 function showTab(t) { [...$('#tabs').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 't-' + t)); if (t === 'incroci') refreshScatter(); togglePanel(true); }

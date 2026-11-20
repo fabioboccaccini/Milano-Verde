@@ -155,14 +155,13 @@ function initMap() {
 function cartoKey() { return (CFG.cartoKey || '').trim(); }
 function setBasemap(key, style) {
   const att = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
-  const hadLabels = labelTiles && map.hasLayer(labelTiles);
   if (baseTiles) map.removeLayer(baseTiles); if (labelTiles) map.removeLayer(labelTiles); baseTiles = labelTiles = null;
   if (!key) { src('carto', 'Mappa di base CARTO', 'off', 'Serve una chiave gratuita: richiedila su carto.com/basemaps/apikey e scrivila in CFG.cartoKey (a_tables.js). Senza chiave la mappa mostra solo i dati.'); return; }
   const u = v => 'https://basemaps.cartocdn.com/rastertiles/' + v + '/{z}/{x}/{y}{r}.png?key=' + encodeURIComponent(key);
   // Positron senza etichette, ricolorata via filtro CSS (.base-tiles); etichette su un livello separato
   baseTiles = L.tileLayer(u(style || 'light_nolabels'), {maxZoom: 20, maxNativeZoom: 18, className: 'base-tiles', attribution: att}).addTo(map);
   labelTiles = L.tileLayer(u('light_only_labels'), {maxZoom: 20, maxNativeZoom: 18, pane: 'labels', className: 'label-tiles'});
-  if (hadLabels) labelTiles.addTo(map);
+  if (ST.on.nomi) labelTiles.addTo(map);
   let ok = 0, bad = 0;
   baseTiles.on('tileload', () => { if (++ok === 1) src('carto', 'Mappa di base CARTO', 'ok', 'Tasselli Positron (' + (style || 'light_nolabels') + ') con chiave.'); });
   // se la variante senza etichette non esiste con il nuovo schema a chiave, ripiego su light_all (documentata)

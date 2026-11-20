@@ -36,7 +36,7 @@ canvas.pix,img.pix{image-rendering:pixelated;image-rendering:crisp-edges}
 .btn.sm{font-size:8px;padding:8px;min-height:32px}
 #bar .btn{box-shadow:3px 3px 0 var(--leaf2)}
 
-main{position:relative;flex:1 1 auto;min-height:0}
+main{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
 #map{position:absolute;inset:0;background:#dfe6cf}
 .leaflet-container{font-family:var(--tx);background:#dfe6cf}
 .base-tiles{filter:sepia(.55) hue-rotate(38deg) saturate(1.5) brightness(.97) contrast(.98)}
@@ -65,8 +65,9 @@ main{position:relative;flex:1 1 auto;min-height:0}
 .spr-ico.as-tree img{transform:scale(var(--mkt,1))}
 
 /* pannello */
-#panel{position:absolute;left:0;top:0;bottom:0;width:348px;max-width:92vw;background:var(--paper);border-right:4px solid var(--ink);z-index:1100;display:flex;flex-direction:column;transition:transform .18s steps(4)}
-#panel.closed{transform:translateX(-102%)}
+#panel{position:absolute;left:0;top:0;bottom:0;width:348px;max-width:92vw;background:var(--paper);border-right:4px solid var(--ink);z-index:1100;display:flex;flex-direction:column;transition:transform .18s steps(4),visibility 0s}
+/* da chiuso il pannello sparisce del tutto: su iPhone il bordo restava visibile sotto la barra di Safari */
+#panel.closed{transform:translateX(-102%);visibility:hidden;transition:transform .18s steps(4),visibility 0s .18s}
 #tabs{display:flex;background:var(--ink);padding:6px 6px 0;gap:4px;flex:0 0 auto}
 #tabs button{flex:1;font-family:var(--px);font-size:8px;padding:9px 2px;min-height:36px;border:3px solid var(--ink);border-bottom:0;background:var(--slate);color:var(--paper);cursor:pointer;border-radius:0}
 #tabs button.on{background:var(--paper);color:var(--ink)}
@@ -186,11 +187,10 @@ a{color:var(--water)}
 </div>
 
 <header id="bar">
-  <button class="btn" id="bpanel" aria-label="Apri o chiudi il pannello">&#9776; Livelli</button>
+  <button class="btn" id="bpanel" aria-label="Apri o chiudi il pannello">&#9776; Opzioni</button>
   <h1>MILANO VERDE<small>BETA</small></h1>
   <div class="sp"></div>
   <button class="btn sm" id="bgeo" title="Mostra la mia posizione" aria-label="Mostra la mia posizione">&#9678; Qui</button>
-  <button class="btn sm" id="blabels" title="Nomi di vie e quartieri">Nomi</button>
 </header>
 
 <main>
@@ -501,6 +501,11 @@ function buildSprites() {
     '................','.....kk..kk.....','....kppkkppk....','...kppppppppk...','...kppyyyyppk...','....kpyooypk....','...kppyyyyppk...',
     '...kppppppppk...','....kppkkppk....','.....kkggkk.....','..kk...gg.......','.kllk..gg..kk...','..kllk.gg.kllk..','...kkkgggkllk...','.....kggggkk....','......kkkk......'],
     {k:K,p:PAL.pink,y:PAL.sun,o:PAL.orange,g:PAL.leaf2,l:PAL.leaf3});
+  // cartello stradale per il livello dei nomi
+  SPR.nomi = fromMap([
+    '................','................','.kkkkkkkkkkkkkk.','.kbbbbbbbbbbbbk.','.kbbbwwbbwbbbbk.','.kbbwbbwbwbbbbk.','.kbbwbbwbwbbbbk.',
+    '.kbbwwwwbwwwbbk.','.kbbwbbwbwbbwbk.','.kbbwbbwbwwwbbk.','.kbbbbbbbbbbbbk.','.kkkkkkkkkkkkkk.','.......kk.......','.......kk.......','.......kk.......','......kkkk......'],
+    {k:K,b:PAL.water,w:PAL.white});
   SPR.glicine = fromMap([
     '................','.bbbbbbbbbbbbbb.','kggvggvggvggvggk','kvvvgvvvgvvvgvvk','.kvpvkvpvkvpvkk.','.bvpv.vpv.vpv.b.','.b.vp.kvp.kvp.b.',
     '.b.pv..pv..pv.b.','.b..v..vp..v..b.','.b..p...v..p..b.','.b......p.....b.','.b............b.','.b............b.','.b............b.','kbk..........kbk','................'],
@@ -717,14 +722,13 @@ function initMap() {
 function cartoKey() { return (CFG.cartoKey || '').trim(); }
 function setBasemap(key, style) {
   const att = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
-  const hadLabels = labelTiles && map.hasLayer(labelTiles);
   if (baseTiles) map.removeLayer(baseTiles); if (labelTiles) map.removeLayer(labelTiles); baseTiles = labelTiles = null;
   if (!key) { src('carto', 'Mappa di base CARTO', 'off', 'Serve una chiave gratuita: richiedila su carto.com/basemaps/apikey e scrivila in CFG.cartoKey (a_tables.js). Senza chiave la mappa mostra solo i dati.'); return; }
   const u = v => 'https://basemaps.cartocdn.com/rastertiles/' + v + '/{z}/{x}/{y}{r}.png?key=' + encodeURIComponent(key);
   // Positron senza etichette, ricolorata via filtro CSS (.base-tiles); etichette su un livello separato
   baseTiles = L.tileLayer(u(style || 'light_nolabels'), {maxZoom: 20, maxNativeZoom: 18, className: 'base-tiles', attribution: att}).addTo(map);
   labelTiles = L.tileLayer(u('light_only_labels'), {maxZoom: 20, maxNativeZoom: 18, pane: 'labels', className: 'label-tiles'});
-  if (hadLabels) labelTiles.addTo(map);
+  if (ST.on.nomi) labelTiles.addTo(map);
   let ok = 0, bad = 0;
   baseTiles.on('tileload', () => { if (++ok === 1) src('carto', 'Mappa di base CARTO', 'ok', 'Tasselli Positron (' + (style || 'light_nolabels') + ') con chiave.'); });
   // se la variante senza etichette non esiste con il nuovo schema a chiave, ripiego su light_all (documentata)
@@ -1009,7 +1013,7 @@ async function loadTreesFile(file) {
    STATO DELL'INTERFACCIA
    ===================================================================== */
 const ST = {mode: 'none', month: new Date().getMonth() + 1, showyOnly: false, monthOnly: false, fGenus: '', fSpecies: '',
-  metric: 'treesCap', choro: null, exSmall: true, on: {alberi: true, monum: true, parchi: true, orti: true, giardini: true, fauna: true, nil: true, glicini: true}};
+  metric: 'treesCap', choro: null, exSmall: true, on: {alberi: true, monum: true, parchi: true, orti: true, giardini: true, fauna: true, nil: true, glicini: true, nomi: true}};
 let treeLayer, faunaLayer;
 let spMeta = [], spNorm = [], spHi = [], spLev = new Uint8Array(0);
 
@@ -1346,6 +1350,7 @@ function setLayer(key, on) {
   const l = LY[key];
   if (l) { if (on) l.addTo(map); else map.removeLayer(l); }
   if (key === 'nil' && on && LY.nil) LY.nil.bringToBack();
+  if (key === 'nomi' && labelTiles) { if (on) labelTiles.addTo(map); else map.removeLayer(labelTiles); }
   if (key === 'alberi' && treeLayer) treeLayer.redraw();
   if (key === 'fauna' && faunaLayer) faunaLayer.redraw();
   updateHud();
@@ -1595,6 +1600,7 @@ function buildPanel() {
     '<p class="note" id="faunanum"></p><button class="btn sm" id="moreinat">Carica altre 1.000 da iNaturalist</button>' +
     '<label style="margin-top:10px">Chiave eBird (facoltativa)<input type="password" id="ebkey" placeholder="incolla la tua chiave API" autocomplete="off"></label><button class="btn sm" id="ebgo">Carica eBird</button><p class="note">La chiave è gratuita su ebird.org/api/keygen e resta solo in questo browser.</p>');
   layerRow('nil', 'CONFINI DEI QUARTIERI', '88 Nuclei di Identità Locale (NIL), base delle statistiche.', SPR.nil);
+  layerRow('nomi', 'NOMI DI VIE E QUARTIERI', 'Etichette della mappa di base.', SPR.nomi);
   document.querySelectorAll('[data-ico]').forEach(c => c.getContext('2d').drawImage(SPR[c.dataset.ico], 0, 0));
   document.querySelectorAll('[data-grp]').forEach(c => { c.onchange = () => { FA.groups[c.dataset.grp] = c.checked; if (faunaLayer) faunaLayer.redraw(); }; });
   $('#c-orti').onchange = e => setLayer('orti', e.target.checked); $('#c-giardini').onchange = e => setLayer('giardini', e.target.checked);
@@ -1617,13 +1623,12 @@ function buildPanel() {
   // schede, pannello, etichette
   [...$('#tabs').children].forEach(b => { b.onclick = () => showTab(b.dataset.t); });
   $('#bpanel').onclick = () => togglePanel();
-  $('#blabels').onclick = () => { if (!labelTiles) return; const on = map.hasLayer(labelTiles); if (on) map.removeLayer(labelTiles); else labelTiles.addTo(map); $('#blabels').classList.toggle('on', !on); };
   $('#bgeo').onclick = locateMe;
   if (isMobile()) togglePanel(false);
 }
 /* Geolocalizzazione: la posizione resta nel browser, non viene inviata a nessuna fonte */
 let meMarker = null, meCircle = null, _msgT = 0;
-function hudMsg(t) { let el = $('#hudmsg'); if (!el) { el = document.createElement('div'); el.id = 'hudmsg'; el.className = 'hudbox'; $('#hud').prepend(el); } el.textContent = t; clearTimeout(_msgT); _msgT = setTimeout(() => el.remove(), 6000); }
+function hudMsg(t) { let el = $('#hudmsg'); if (!el) { el = document.createElement('div'); el.id = 'hudmsg'; el.className = 'hudbox'; $('#hud').prepend(el); } el.textContent = t; clearTimeout(_msgT); _msgT = setTimeout(() => el.remove(), t.length > 60 ? 12000 : 6000); }
 function locateMe() {
   const b = $('#bgeo');
   if (!navigator.geolocation) { hudMsg('QUESTO BROWSER NON OFFRE LA POSIZIONE'); return; }
@@ -1639,7 +1644,8 @@ function locateMe() {
     hudMsg(nid ? 'SEI A ' + NIL.byId[nid].name.toUpperCase() + ' (±' + Math.round(acc) + ' M)' : 'SEI FUORI DAL COMUNE DI MILANO');
   }, e => {
     b.classList.remove('on');
-    hudMsg(e.code === 1 ? 'PERMESSO NEGATO: ABILITA LA POSIZIONE PER QUESTA PAGINA' : e.code === 3 ? 'POSIZIONE NON ARRIVATA IN TEMPO' : 'POSIZIONE NON DISPONIBILE');
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    hudMsg(e.code === 1 ? (ios ? 'POSIZIONE NEGATA. SU IPHONE: IMPOSTAZIONI › PRIVACY E SICUREZZA › LOCALIZZAZIONE › SITI WEB DI SAFARI, POI RICARICA' : 'POSIZIONE NEGATA: CONSENTILA PER QUESTO SITO DALLE IMPOSTAZIONI DEL BROWSER, POI RICARICA') : e.code === 3 ? 'POSIZIONE NON ARRIVATA IN TEMPO' : 'POSIZIONE NON DISPONIBILE');
   }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 30000});
 }
 function showTab(t) { [...$('#tabs').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 't-' + t)); if (t === 'incroci') refreshScatter(); togglePanel(true); }

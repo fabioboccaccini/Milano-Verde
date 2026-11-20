@@ -2,7 +2,7 @@
    STATO DELL'INTERFACCIA
    ===================================================================== */
 const ST = {mode: 'none', month: new Date().getMonth() + 1, showyOnly: false, monthOnly: false, fGenus: '', fSpecies: '',
-  metric: 'treesCap', choro: null, exSmall: true, on: {alberi: true, monum: true, parchi: true, orti: true, giardini: true, fauna: true, nil: true, glicini: true}};
+  metric: 'treesCap', choro: null, exSmall: true, on: {alberi: true, monum: true, parchi: true, orti: true, giardini: true, fauna: true, nil: true, glicini: true, nomi: true}};
 let treeLayer, faunaLayer;
 let spMeta = [], spNorm = [], spHi = [], spLev = new Uint8Array(0);
 
@@ -339,6 +339,7 @@ function setLayer(key, on) {
   const l = LY[key];
   if (l) { if (on) l.addTo(map); else map.removeLayer(l); }
   if (key === 'nil' && on && LY.nil) LY.nil.bringToBack();
+  if (key === 'nomi' && labelTiles) { if (on) labelTiles.addTo(map); else map.removeLayer(labelTiles); }
   if (key === 'alberi' && treeLayer) treeLayer.redraw();
   if (key === 'fauna' && faunaLayer) faunaLayer.redraw();
   updateHud();

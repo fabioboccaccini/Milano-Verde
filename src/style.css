@@ -24,7 +24,7 @@ canvas.pix,img.pix{image-rendering:pixelated;image-rendering:crisp-edges}
 .btn.sm{font-size:8px;padding:8px;min-height:32px}
 #bar .btn{box-shadow:3px 3px 0 var(--leaf2)}
 
-main{position:relative;flex:1 1 auto;min-height:0}
+main{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
 #map{position:absolute;inset:0;background:#dfe6cf}
 .leaflet-container{font-family:var(--tx);background:#dfe6cf}
 .base-tiles{filter:sepia(.55) hue-rotate(38deg) saturate(1.5) brightness(.97) contrast(.98)}
@@ -53,8 +53,9 @@ main{position:relative;flex:1 1 auto;min-height:0}
 .spr-ico.as-tree img{transform:scale(var(--mkt,1))}
 
 /* pannello */
-#panel{position:absolute;left:0;top:0;bottom:0;width:348px;max-width:92vw;background:var(--paper);border-right:4px solid var(--ink);z-index:1100;display:flex;flex-direction:column;transition:transform .18s steps(4)}
-#panel.closed{transform:translateX(-102%)}
+#panel{position:absolute;left:0;top:0;bottom:0;width:348px;max-width:92vw;background:var(--paper);border-right:4px solid var(--ink);z-index:1100;display:flex;flex-direction:column;transition:transform .18s steps(4),visibility 0s}
+/* da chiuso il pannello sparisce del tutto: su iPhone il bordo restava visibile sotto la barra di Safari */
+#panel.closed{transform:translateX(-102%);visibility:hidden;transition:transform .18s steps(4),visibility 0s .18s}
 #tabs{display:flex;background:var(--ink);padding:6px 6px 0;gap:4px;flex:0 0 auto}
 #tabs button{flex:1;font-family:var(--px);font-size:8px;padding:9px 2px;min-height:36px;border:3px solid var(--ink);border-bottom:0;background:var(--slate);color:var(--paper);cursor:pointer;border-radius:0}
 #tabs button.on{background:var(--paper);color:var(--ink)}

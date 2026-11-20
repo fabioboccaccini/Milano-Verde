@@ -131,6 +131,11 @@ function buildSprites() {
     '................','.....kk..kk.....','....kppkkppk....','...kppppppppk...','...kppyyyyppk...','....kpyooypk....','...kppyyyyppk...',
     '...kppppppppk...','....kppkkppk....','.....kkggkk.....','..kk...gg.......','.kllk..gg..kk...','..kllk.gg.kllk..','...kkkgggkllk...','.....kggggkk....','......kkkk......'],
     {k:K,p:PAL.pink,y:PAL.sun,o:PAL.orange,g:PAL.leaf2,l:PAL.leaf3});
+  // cartello stradale per il livello dei nomi
+  SPR.nomi = fromMap([
+    '................','................','.kkkkkkkkkkkkkk.','.kbbbbbbbbbbbbk.','.kbbbwwbbwbbbbk.','.kbbwbbwbwbbbbk.','.kbbwbbwbwbbbbk.',
+    '.kbbwwwwbwwwbbk.','.kbbwbbwbwbbwbk.','.kbbwbbwbwwwbbk.','.kbbbbbbbbbbbbk.','.kkkkkkkkkkkkkk.','.......kk.......','.......kk.......','.......kk.......','......kkkk......'],
+    {k:K,b:PAL.water,w:PAL.white});
   SPR.glicine = fromMap([
     '................','.bbbbbbbbbbbbbb.','kggvggvggvggvggk','kvvvgvvvgvvvgvvk','.kvpvkvpvkvpvkk.','.bvpv.vpv.vpv.b.','.b.vp.kvp.kvp.b.',
     '.b.pv..pv..pv.b.','.b..v..vp..v..b.','.b..p...v..p..b.','.b......p.....b.','.b............b.','.b............b.','.b............b.','kbk..........kbk','................'],
