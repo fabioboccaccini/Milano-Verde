@@ -204,9 +204,15 @@ a{color:var(--water)}
   #bar h1{flex:1;text-align:center;font-size:15px;white-space:nowrap}
   #bar #bpanel,#bar #bgeo{width:42px;height:42px;min-height:0;padding:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
   #bar .lbl{display:none}
+  /* il pulsante del menu tiene la scritta, come nei giochi */
+  #bar #bpanel{width:auto;padding:0 10px 0 8px;gap:6px}
+  #bar #bpanel .lbl{display:inline;font-size:9px}
   #bar .ico{font-size:18px;line-height:1;font-family:var(--tx)}
   #bar #bgeo .ico img{width:28px;height:28px}
 }
+/* telefoni stretti: titolo un po' più piccolo, sotto i 340px senza «8 bit» */
+@media (max-width:370px){#bar h1{font-size:13px}#bar h1 small{font-size:7px;margin-left:7px}#bar{padding:8px 8px}}
+@media (max-width:340px){#bar h1 small{display:none}}
 </style>
 </head>
 <body>
@@ -221,7 +227,7 @@ a{color:var(--water)}
 </div>
 
 <header id="bar">
-  <button class="btn" id="bpanel" aria-label="Apri o chiudi il pannello delle opzioni"><span class="ico">&#9776;</span><span class="lbl"> Opzioni</span></button>
+  <button class="btn" id="bpanel" aria-label="Apri o chiudi il menu"><span class="ico">&#9776;</span><span class="lbl"> Menu</span></button>
   <h1>FOGLIA<span class="mi">MI</span><small>8 BIT</small></h1>
   <div class="sp"></div>
   <button class="btn" id="bgeo" title="Mostra la mia posizione" aria-label="Mostra la mia posizione"><span class="ico">&#9678;</span><span class="lbl"> Qui</span></button>
