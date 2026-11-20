@@ -203,6 +203,17 @@ html.v4 .leaflet-bottom,html.v5 .leaflet-bottom{bottom:var(--sotto)}
   html.v4 #hud,html.v5 #hud{bottom:calc(22px + var(--sotto))}
   html.v4 #panel,html.v5 #panel{height:calc(64dvh + var(--sotto));padding-bottom:var(--sotto)}
 }
+
+/* v6 = v4 + pagina bloccata (niente scorrimento né zoom della pagina) + crediti in basso a sinistra */
+html.v6{--sotto:120px;overflow:hidden;overscroll-behavior:none;touch-action:none}
+html.v6 body{height:calc(100dvh + var(--sotto));touch-action:none}
+html.v6 .tab{touch-action:pan-y}
+html.v6 .leaflet-bottom{bottom:var(--sotto)}
+@media (max-width:760px){
+  html.v6 #hud{bottom:calc(22px + var(--sotto))}
+  html.v6 #panel{height:calc(64dvh + var(--sotto));padding-bottom:var(--sotto)}
+  html.v6 .leaflet-control-attribution{font-size:9px;line-height:1.3;padding:1px 4px}
+}
 #diag{position:fixed;left:8px;top:120px;z-index:5000;background:rgba(27,28,46,.9);color:#fff;font:12px/1.35 monospace;padding:8px 10px;white-space:pre;pointer-events:none}
 .probe{position:fixed;left:-9px;top:0;width:1px;visibility:hidden}
 </style>
@@ -1804,6 +1815,21 @@ window.addEventListener('DOMContentLoaded', main);
     '\nsafe-bottom '+px('env(safe-area-inset-bottom)')+'\nschermo '+screen.height+'\nmappa: da '+Math.round(m.top)+' a '+Math.round(m.bottom);}
   addEventListener('load',function(){setTimeout(show,800)}); addEventListener('resize',show); if(window.visualViewport)visualViewport.addEventListener('resize',show);
 })();
+</script>
+
+<script>
+if (document.documentElement.classList.contains('v6')) {
+  // la pagina non deve mai scorrere: se Safari la sposta, torna a posto
+  addEventListener('scroll', function(){ if (scrollY || scrollX) scrollTo(0, 0); }, {passive: true});
+  if (window.visualViewport) visualViewport.addEventListener('scroll', function(){ if (scrollY) scrollTo(0, 0); });
+  // niente zoom della pagina con il pizzico fuori dalla mappa (Safari ignora user-scalable)
+  document.addEventListener('gesturestart', function(e){ if (!e.target.closest || !e.target.closest('#map')) e.preventDefault(); });
+  addEventListener('load', function(){ setTimeout(function(){
+    if (!window.map) return;
+    map.attributionControl.setPosition('bottomleft');
+    if (matchMedia('(max-width:760px)').matches) map.attributionControl.setPrefix(false);
+  }, 300); });
+}
 </script>
 </body>
 </html>
