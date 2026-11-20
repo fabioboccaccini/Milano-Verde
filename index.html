@@ -247,9 +247,9 @@ a{color:var(--water)}
 'use strict';
 /* =====================================================================
    MILANO VERDE — pagina unica, dati letti in diretta dalle fonti.
-   Nessun dato è incorporato nel file: le sole tabelle statiche sono
-   quelle botaniche (fioriture, allergeni, nomi comuni), compilate a mano
-   e dichiarate come approssimazioni nella scheda Info.
+   Eccezioni: le tabelle botaniche (fioriture, allergeni, nomi comuni),
+   compilate a mano e dichiarate come approssimazioni nella scheda Info,
+   e i file in data/ (censimento degli alberi, conteggi GBIF per NIL).
    ===================================================================== */
 
 const CFG = {
@@ -257,7 +257,7 @@ const CFG = {
   // Dataset del Comune (CKAN). Gli URL di download vengono risolti a runtime
   // con package_show; quelli qui sotto sono il ripiego se la risoluzione fallisce.
   pkg: {
-    nil:      {id: 'ds964-nil-vigenti-pgt-2030', fmt: 'GeoJSON', url: '/dataset/e8e765fc-d882-40b8-95d8-16ff3d39eb7c/resource/9c4e0776-56fc-4f3d-8a90-f4992a3be426/download/ds964_nil_wm.geojson'},
+    nil:      {id: 'ds964-nil-vigenti-pgt-2030', fmt: 'GeoJSON', local: 'data/nil.geojson', url: '/dataset/e8e765fc-d882-40b8-95d8-16ff3d39eb7c/resource/9c4e0776-56fc-4f3d-8a90-f4992a3be426/download/ds964_nil_wm.geojson'},
     parchi:   {id: 'ds89_infogeo_parchi_giardini_localizzazione_', fmt: 'GeoJSON', url: '/dataset/8920bbea-fe1a-4061-8c6e-0746d95316c1/resource/7cba11e7-c236-49a7-aef4-4db6329eec5d/download/parchi.geojson'},
     orti:     {id: 'ds2186-infogeo-orti-urbani-localizzazione', fmt: 'GeoJSON', url: '/dataset/8f85ebf9-73c7-45cc-a428-66d56b7b46a4/resource/3c052ee5-47d8-4902-b2be-85e053a4ed41/download/ds2186_aree_orti_comunali.geojson'},
     giardini: {id: 'ds2187-infogeo-giardini-condivisi-localizzazione', fmt: 'GeoJSON', url: '/dataset/57c2441d-69f1-42b9-a83d-41d8b98ddcbd/resource/df9a8989-51e2-4927-aef3-0487a80dc75e/download/ds2187_giardini_condivisi.geojson'},
@@ -283,6 +283,7 @@ const CFG = {
   overpass: ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'],
   inat: 'https://api.inaturalist.org/v1/observations',
   gbif: 'https://api.gbif.org/v1/occurrence/search',
+  gbifNilCounts: 'data/gbif_nil.json', // conteggi per NIL precalcolati con tools/gbif_nil_counts.py
   gbifInat: '50c9509d-22c7-4a22-a47d-8c48425ef4a7', // dataset iNaturalist dentro GBIF: escluso per non contare due volte
   ebird: 'https://api.ebird.org/v2/data/obs/geo/recent', // richiede chiave personale (campo nel pannello)
   cartoKey: 'cb1_5agz_1_f1a0c909ef4a187a638aa616', // chiave gratuita CARTO Basemaps, vincolata al dominio nashkaze.github.io dal pannello CARTO
@@ -1218,31 +1219,22 @@ async function loadGbif() {
     src('gbif', 'GBIF', 'ok', fmt(FA.counts.gbif) + ' occorrenze caricate dai maggiori dataset non iNaturalist (' + fmt(fc.count) + ' record animali nel riquadro di Milano, iNaturalist compreso).');
   } catch (e) { src('gbif', 'GBIF', FA.counts.gbif ? 'part' : 'err', esc(e.message)); }
 }
-/* GBIF: conteggio completo delle occorrenze animali dentro ogni NIL (richieste senza record, solo il totale).
-   Poligono semplificato, verso antiorario come richiesto da GBIF. NON TESTATO in sviluppo: se i numeri sono
-   incoerenti la statistica ripiega sul campione di punti caricati. */
+/* GBIF: conteggio delle occorrenze animali dentro ogni NIL. Calcolato in anticipo da tools/gbif_nil_counts.py
+   e salvato in data/gbif_nil.json: chiederlo a GBIF a ogni visita voleva dire 88 richieste e un blocco (HTTP 429). */
 async function loadGbifNilCounts() {
-  const jobs = NIL.list.slice(); let ok = 0, bad = 0, total = 0;
-  src('gbifnil', 'GBIF, conteggi per quartiere', 'wait', 'Conteggio delle occorrenze in ogni NIL in corso…');
-  const worker = async () => {
-    while (jobs.length) {
-      const o = jobs.shift();
-      try {
-        let ring = o.polys.reduce((a, p) => Math.abs(ringArea(p[0])) > Math.abs(ringArea(a)) ? p[0] : a, o.polys[0][0]);
-        const step = Math.max(1, Math.ceil(ring.length / 70)); let pts = ring.filter((c, i) => i % step === 0);
-        if (ringArea(pts) < 0) pts = pts.slice().reverse(); // ringArea>0 = antiorario con questa formula
-        const f = pts[0], l = pts[pts.length - 1]; if (f[0] !== l[0] || f[1] !== l[1]) pts = pts.concat([f]);
-        const wkt = 'POLYGON((' + pts.map(c => c[0].toFixed(5) + ' ' + c[1].toFixed(5)).join(',') + '))';
-        const js = await fetchJSON(CFG.gbif + '?geometry=' + encodeURIComponent(wkt) + '&kingdomKey=1&hasGeospatialIssue=false&occurrenceStatus=PRESENT&limit=0', {timeout: 30000});
-        if (typeof js.count !== 'number') throw new Error('risposta inattesa');
-        o.faunaTot = js.count; total += js.count; ok++;
-      } catch (e) { bad++; }
-    }
-  };
-  await Promise.all([worker(), worker(), worker()]);
-  const maxTot = Math.max(...NIL.list.map(o => o.faunaTot || 0));
-  if (!ok || bad > NIL.list.length / 4 || maxTot > 5e6) { NIL.list.forEach(o => { delete o.faunaTot; }); FA.gbifNil = false; src('gbifnil', 'GBIF, conteggi per quartiere', 'err', 'Non riuscito (' + bad + ' richieste fallite): la statistica usa il campione di punti caricati.'); }
-  else { FA.gbifNil = true; src('gbifnil', 'GBIF, conteggi per quartiere', bad ? 'part' : 'ok', fmt(total) + ' occorrenze animali contate in ' + ok + ' NIL' + (bad ? ' (' + bad + ' mancanti)' : '') + ', iNaturalist ed eBird compresi.'); }
+  src('gbifnil', 'GBIF, conteggi per quartiere', 'wait', 'Leggo i conteggi per quartiere…');
+  try {
+    if (!NIL.list.length) throw new Error('confini dei quartieri non disponibili');
+    const js = await fetchJSON(CFG.gbifNilCounts, {timeout: 20000}), c = js.counts || {};
+    let ok = 0, total = 0;
+    NIL.list.forEach(o => { const v = c[o.id]; if (typeof v === 'number') { o.faunaTot = v; total += v; ok++; } });
+    if (ok < NIL.list.length * 0.75) throw new Error('file incompleto (' + ok + ' quartieri su ' + NIL.list.length + ')');
+    FA.gbifNil = true;
+    src('gbifnil', 'GBIF, conteggi per quartiere', ok < NIL.list.length ? 'part' : 'ok', fmt(total) + ' occorrenze animali contate in ' + ok + ' NIL, iNaturalist ed eBird compresi. Conteggio del ' + esc(String(js.updated || '').split('-').reverse().join('/')) + '.');
+  } catch (e) {
+    NIL.list.forEach(o => { delete o.faunaTot; }); FA.gbifNil = false;
+    src('gbifnil', 'GBIF, conteggi per quartiere', 'err', esc(e.message) + ': la statistica usa il campione di punti caricati.');
+  }
   statsChanged();
 }
 async function loadEbird(key) {
@@ -1287,7 +1279,16 @@ async function loadCkanGeo(key, label) {
     if (!gj.features) throw new Error('formato inatteso');
     src(key, label, 'ok', fmt(gj.features.length) + ' elementi · ' + esc(u.title) + (u.mod ? ' · aggiornato al ' + u.mod.split('-').reverse().join('/') : ''));
     return gj;
-  } catch (e) { src(key, label, 'err', esc(e.message)); return null; }
+  } catch (e) {
+    // copia nel sito per i dati stabili (i NIL sono fermi al 2020): il portale a volte li serve senza CORS
+    const loc = CFG.pkg[key].local;
+    if (loc) try {
+      const gj = await fetchJSON(loc, {timeout: 30000}); if (!gj.features) throw new Error('formato inatteso');
+      src(key, label, 'ok', fmt(gj.features.length) + ' elementi · copia nel sito del dataset del Comune (' + esc(CFG.pkg[key].id) + '). Portale non leggibile: ' + esc(e.message) + '.');
+      return gj;
+    } catch (e2) { src(key, label, 'err', esc(e.message) + '; copia nel sito: ' + esc(e2.message)); return null; }
+    src(key, label, 'err', esc(e.message)); return null;
+  }
 }
 function nilPopup(o) {
   const km = o.area / 1e6, small = o.pop != null && o.pop < CFG.smallPop, fa = o.faunaTot != null ? o.faunaTot : o.fauna;
@@ -1712,9 +1713,11 @@ async function main() {
   // 2. tutto il resto in parallelo
   const pPop = (async () => {
     try {
+      if (!NIL.list.length) throw new Error('confini dei quartieri non disponibili');
       const id = CFG.rs.pop, sql = 'SELECT "IdNil", SUM("Residenti") AS pop, MAX("Anno") AS anno FROM "' + id + '" WHERE "Anno" = (SELECT MAX("Anno") FROM "' + id + '") GROUP BY "IdNil"';
       const js = await fetchJSON(CFG.ckan + '/api/3/action/datastore_search_sql?sql=' + encodeURIComponent(sql), {timeout: 40000});
       let tot = 0, yr = ''; for (const r of js.result.records) { const o = NIL.byId[+r.IdNil]; if (o) { o.pop = +r.pop; o.popYear = r.anno; tot += +r.pop; yr = r.anno; } }
+      if (!tot) throw new Error('nessun residente attribuito ai quartieri');
       src('pop', 'Residenti per NIL', 'ok', fmt(tot) + ' residenti al 31/12/' + esc(yr) + ' · Comune di Milano, ds27 (interrogazione SQL sul DataStore).');
     } catch (e) { src('pop', 'Residenti per NIL', 'err', esc(e.message)); }
     tk.pop.end('Residenti contati'); statsChanged(true);
@@ -1722,6 +1725,7 @@ async function main() {
   const pIdx = (async () => {
     try {
       const get = async (rid, f) => { const js = await fetchJSON(CFG.ckan + '/api/3/action/datastore_search?resource_id=' + rid + '&limit=200', {timeout: 30000}); for (const r of js.result.records) { const o = NIL.byId[+r.ID_NIL]; if (o) o[f] = +r.value; } };
+      if (!NIL.list.length) throw new Error('confini dei quartieri non disponibili');
       await Promise.all([get(CFG.rs.heat, 'heat'), get(CFG.rs.green, 'green')]);
       src('indici', 'Indici di calore e di verde', 'ok', 'Per NIL, luglio 2024 · Comune di Milano su elaborazione SPOTTED (ds2811, ds2813).');
     } catch (e) { src('indici', 'Indici di calore e di verde', 'err', esc(e.message)); }

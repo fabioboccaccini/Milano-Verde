@@ -1,9 +1,9 @@
 'use strict';
 /* =====================================================================
    MILANO VERDE — pagina unica, dati letti in diretta dalle fonti.
-   Nessun dato è incorporato nel file: le sole tabelle statiche sono
-   quelle botaniche (fioriture, allergeni, nomi comuni), compilate a mano
-   e dichiarate come approssimazioni nella scheda Info.
+   Eccezioni: le tabelle botaniche (fioriture, allergeni, nomi comuni),
+   compilate a mano e dichiarate come approssimazioni nella scheda Info,
+   e i file in data/ (censimento degli alberi, conteggi GBIF per NIL).
    ===================================================================== */
 
 const CFG = {
@@ -11,7 +11,7 @@ const CFG = {
   // Dataset del Comune (CKAN). Gli URL di download vengono risolti a runtime
   // con package_show; quelli qui sotto sono il ripiego se la risoluzione fallisce.
   pkg: {
-    nil:      {id: 'ds964-nil-vigenti-pgt-2030', fmt: 'GeoJSON', url: '/dataset/e8e765fc-d882-40b8-95d8-16ff3d39eb7c/resource/9c4e0776-56fc-4f3d-8a90-f4992a3be426/download/ds964_nil_wm.geojson'},
+    nil:      {id: 'ds964-nil-vigenti-pgt-2030', fmt: 'GeoJSON', local: 'data/nil.geojson', url: '/dataset/e8e765fc-d882-40b8-95d8-16ff3d39eb7c/resource/9c4e0776-56fc-4f3d-8a90-f4992a3be426/download/ds964_nil_wm.geojson'},
     parchi:   {id: 'ds89_infogeo_parchi_giardini_localizzazione_', fmt: 'GeoJSON', url: '/dataset/8920bbea-fe1a-4061-8c6e-0746d95316c1/resource/7cba11e7-c236-49a7-aef4-4db6329eec5d/download/parchi.geojson'},
     orti:     {id: 'ds2186-infogeo-orti-urbani-localizzazione', fmt: 'GeoJSON', url: '/dataset/8f85ebf9-73c7-45cc-a428-66d56b7b46a4/resource/3c052ee5-47d8-4902-b2be-85e053a4ed41/download/ds2186_aree_orti_comunali.geojson'},
     giardini: {id: 'ds2187-infogeo-giardini-condivisi-localizzazione', fmt: 'GeoJSON', url: '/dataset/57c2441d-69f1-42b9-a83d-41d8b98ddcbd/resource/df9a8989-51e2-4927-aef3-0487a80dc75e/download/ds2187_giardini_condivisi.geojson'},
@@ -37,6 +37,7 @@ const CFG = {
   overpass: ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'],
   inat: 'https://api.inaturalist.org/v1/observations',
   gbif: 'https://api.gbif.org/v1/occurrence/search',
+  gbifNilCounts: 'data/gbif_nil.json', // conteggi per NIL precalcolati con tools/gbif_nil_counts.py
   gbifInat: '50c9509d-22c7-4a22-a47d-8c48425ef4a7', // dataset iNaturalist dentro GBIF: escluso per non contare due volte
   ebird: 'https://api.ebird.org/v2/data/obs/geo/recent', // richiede chiave personale (campo nel pannello)
   cartoKey: 'cb1_5agz_1_f1a0c909ef4a187a638aa616', // chiave gratuita CARTO Basemaps, vincolata al dominio nashkaze.github.io dal pannello CARTO

@@ -212,31 +212,22 @@ async function loadGbif() {
     src('gbif', 'GBIF', 'ok', fmt(FA.counts.gbif) + ' occorrenze caricate dai maggiori dataset non iNaturalist (' + fmt(fc.count) + ' record animali nel riquadro di Milano, iNaturalist compreso).');
   } catch (e) { src('gbif', 'GBIF', FA.counts.gbif ? 'part' : 'err', esc(e.message)); }
 }
-/* GBIF: conteggio completo delle occorrenze animali dentro ogni NIL (richieste senza record, solo il totale).
-   Poligono semplificato, verso antiorario come richiesto da GBIF. NON TESTATO in sviluppo: se i numeri sono
-   incoerenti la statistica ripiega sul campione di punti caricati. */
+/* GBIF: conteggio delle occorrenze animali dentro ogni NIL. Calcolato in anticipo da tools/gbif_nil_counts.py
+   e salvato in data/gbif_nil.json: chiederlo a GBIF a ogni visita voleva dire 88 richieste e un blocco (HTTP 429). */
 async function loadGbifNilCounts() {
-  const jobs = NIL.list.slice(); let ok = 0, bad = 0, total = 0;
-  src('gbifnil', 'GBIF, conteggi per quartiere', 'wait', 'Conteggio delle occorrenze in ogni NIL in corso…');
-  const worker = async () => {
-    while (jobs.length) {
-      const o = jobs.shift();
-      try {
-        let ring = o.polys.reduce((a, p) => Math.abs(ringArea(p[0])) > Math.abs(ringArea(a)) ? p[0] : a, o.polys[0][0]);
-        const step = Math.max(1, Math.ceil(ring.length / 70)); let pts = ring.filter((c, i) => i % step === 0);
-        if (ringArea(pts) < 0) pts = pts.slice().reverse(); // ringArea>0 = antiorario con questa formula
-        const f = pts[0], l = pts[pts.length - 1]; if (f[0] !== l[0] || f[1] !== l[1]) pts = pts.concat([f]);
-        const wkt = 'POLYGON((' + pts.map(c => c[0].toFixed(5) + ' ' + c[1].toFixed(5)).join(',') + '))';
-        const js = await fetchJSON(CFG.gbif + '?geometry=' + encodeURIComponent(wkt) + '&kingdomKey=1&hasGeospatialIssue=false&occurrenceStatus=PRESENT&limit=0', {timeout: 30000});
-        if (typeof js.count !== 'number') throw new Error('risposta inattesa');
-        o.faunaTot = js.count; total += js.count; ok++;
-      } catch (e) { bad++; }
-    }
-  };
-  await Promise.all([worker(), worker(), worker()]);
-  const maxTot = Math.max(...NIL.list.map(o => o.faunaTot || 0));
-  if (!ok || bad > NIL.list.length / 4 || maxTot > 5e6) { NIL.list.forEach(o => { delete o.faunaTot; }); FA.gbifNil = false; src('gbifnil', 'GBIF, conteggi per quartiere', 'err', 'Non riuscito (' + bad + ' richieste fallite): la statistica usa il campione di punti caricati.'); }
-  else { FA.gbifNil = true; src('gbifnil', 'GBIF, conteggi per quartiere', bad ? 'part' : 'ok', fmt(total) + ' occorrenze animali contate in ' + ok + ' NIL' + (bad ? ' (' + bad + ' mancanti)' : '') + ', iNaturalist ed eBird compresi.'); }
+  src('gbifnil', 'GBIF, conteggi per quartiere', 'wait', 'Leggo i conteggi per quartiere…');
+  try {
+    if (!NIL.list.length) throw new Error('confini dei quartieri non disponibili');
+    const js = await fetchJSON(CFG.gbifNilCounts, {timeout: 20000}), c = js.counts || {};
+    let ok = 0, total = 0;
+    NIL.list.forEach(o => { const v = c[o.id]; if (typeof v === 'number') { o.faunaTot = v; total += v; ok++; } });
+    if (ok < NIL.list.length * 0.75) throw new Error('file incompleto (' + ok + ' quartieri su ' + NIL.list.length + ')');
+    FA.gbifNil = true;
+    src('gbifnil', 'GBIF, conteggi per quartiere', ok < NIL.list.length ? 'part' : 'ok', fmt(total) + ' occorrenze animali contate in ' + ok + ' NIL, iNaturalist ed eBird compresi. Conteggio del ' + esc(String(js.updated || '').split('-').reverse().join('/')) + '.');
+  } catch (e) {
+    NIL.list.forEach(o => { delete o.faunaTot; }); FA.gbifNil = false;
+    src('gbifnil', 'GBIF, conteggi per quartiere', 'err', esc(e.message) + ': la statistica usa il campione di punti caricati.');
+  }
   statsChanged();
 }
 async function loadEbird(key) {
@@ -281,7 +272,16 @@ async function loadCkanGeo(key, label) {
     if (!gj.features) throw new Error('formato inatteso');
     src(key, label, 'ok', fmt(gj.features.length) + ' elementi · ' + esc(u.title) + (u.mod ? ' · aggiornato al ' + u.mod.split('-').reverse().join('/') : ''));
     return gj;
-  } catch (e) { src(key, label, 'err', esc(e.message)); return null; }
+  } catch (e) {
+    // copia nel sito per i dati stabili (i NIL sono fermi al 2020): il portale a volte li serve senza CORS
+    const loc = CFG.pkg[key].local;
+    if (loc) try {
+      const gj = await fetchJSON(loc, {timeout: 30000}); if (!gj.features) throw new Error('formato inatteso');
+      src(key, label, 'ok', fmt(gj.features.length) + ' elementi · copia nel sito del dataset del Comune (' + esc(CFG.pkg[key].id) + '). Portale non leggibile: ' + esc(e.message) + '.');
+      return gj;
+    } catch (e2) { src(key, label, 'err', esc(e.message) + '; copia nel sito: ' + esc(e2.message)); return null; }
+    src(key, label, 'err', esc(e.message)); return null;
+  }
 }
 function nilPopup(o) {
   const km = o.area / 1e6, small = o.pop != null && o.pop < CFG.smallPop, fa = o.faunaTot != null ? o.faunaTot : o.fauna;

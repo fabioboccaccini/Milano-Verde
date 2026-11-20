@@ -338,9 +338,11 @@ async function main() {
   // 2. tutto il resto in parallelo
   const pPop = (async () => {
     try {
+      if (!NIL.list.length) throw new Error('confini dei quartieri non disponibili');
       const id = CFG.rs.pop, sql = 'SELECT "IdNil", SUM("Residenti") AS pop, MAX("Anno") AS anno FROM "' + id + '" WHERE "Anno" = (SELECT MAX("Anno") FROM "' + id + '") GROUP BY "IdNil"';
       const js = await fetchJSON(CFG.ckan + '/api/3/action/datastore_search_sql?sql=' + encodeURIComponent(sql), {timeout: 40000});
       let tot = 0, yr = ''; for (const r of js.result.records) { const o = NIL.byId[+r.IdNil]; if (o) { o.pop = +r.pop; o.popYear = r.anno; tot += +r.pop; yr = r.anno; } }
+      if (!tot) throw new Error('nessun residente attribuito ai quartieri');
       src('pop', 'Residenti per NIL', 'ok', fmt(tot) + ' residenti al 31/12/' + esc(yr) + ' · Comune di Milano, ds27 (interrogazione SQL sul DataStore).');
     } catch (e) { src('pop', 'Residenti per NIL', 'err', esc(e.message)); }
     tk.pop.end('Residenti contati'); statsChanged(true);
@@ -348,6 +350,7 @@ async function main() {
   const pIdx = (async () => {
     try {
       const get = async (rid, f) => { const js = await fetchJSON(CFG.ckan + '/api/3/action/datastore_search?resource_id=' + rid + '&limit=200', {timeout: 30000}); for (const r of js.result.records) { const o = NIL.byId[+r.ID_NIL]; if (o) o[f] = +r.value; } };
+      if (!NIL.list.length) throw new Error('confini dei quartieri non disponibili');
       await Promise.all([get(CFG.rs.heat, 'heat'), get(CFG.rs.green, 'green')]);
       src('indici', 'Indici di calore e di verde', 'ok', 'Per NIL, luglio 2024 · Comune di Milano su elaborazione SPOTTED (ds2811, ds2813).');
     } catch (e) { src('indici', 'Indici di calore e di verde', 'err', esc(e.message)); }

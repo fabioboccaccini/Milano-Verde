@@ -1,6 +1,6 @@
 # Milano Verde
 
-Mappa interattiva di flora e fauna di Milano in stile pixel art anni '90. Un'unica pagina HTML che legge i dati in diretta dalle fonti aperte. Fanno eccezione le tabelle botaniche scritte a mano (fioriture, allergeni, nomi comuni) e la copia del censimento degli alberi in `data/alberi.zip`.
+Mappa interattiva di flora e fauna di Milano in stile pixel art anni '90. Un'unica pagina HTML che legge i dati in diretta dalle fonti aperte. Fanno eccezione le tabelle botaniche scritte a mano (fioriture, allergeni, nomi comuni) e i file in `data/` (censimento degli alberi, confini dei NIL di riserva, conteggi GBIF per quartiere).
 
 ## Struttura
 
@@ -13,6 +13,9 @@ Mappa interattiva di flora e fauna di Milano in stile pixel art anni '90. Un'uni
 | `src/e_ui.js` | Metriche per NIL, coropletica, classifica, incroci, pannello, geolocalizzazione, avvio |
 | `src/style.css`, `src/body.html` | Stile e struttura della pagina |
 | `build.py` | Concatena tutto in `index.html` |
+| `data/nil.geojson` | Copia dei confini dei NIL (ds964, PGT 2030, fermi al 2020), usata se il portale non li serve: a volte li manda senza CORS |
+| `data/gbif_nil.json` | Conteggi GBIF delle occorrenze animali per NIL, generati da `tools/gbif_nil_counts.py` |
+| `tools/gbif_nil_counts.py` | Rigenera `data/gbif_nil.json` (88 richieste in sequenza a GBIF, circa due minuti): da rilanciare ogni tanto |
 | `data/alberi.zip` | Censimento degli alberi del Comune (ds2484, 31/03/2024, 247.779 alberi), ridotto alle colonne usate e compresso (2,6 MB) |
 
 Si modifica `src/`, poi si rigenera:
@@ -33,7 +36,7 @@ Dipendenze esterne caricate da CDN: Leaflet 1.9.4 (con hash di integrità) e il 
 | Vecchio geoportale ArcGIS (livello Alberi) | Server non raggiungibile. Ancora in catena: candidato alla rimozione |
 | OpenStreetMap via Overpass | Ripiego per gli alberi, mai provato dal vivo |
 | iNaturalist, GBIF | Formato verificato su risposte reali, flusso completo non provato dal vivo |
-| GBIF, conteggi per NIL | Non provati. Se incoerenti si ripiega sul campione di punti |
+| GBIF, conteggi per NIL | Precalcolati in `data/gbif_nil.json`: chiesti dal vivo (88 richieste a visita) GBIF rispondeva 429 e bloccava anche i punti |
 | eBird | Richiede chiave personale (campo nel pannello) |
 | CARTO Basemaps | Da fine agosto 2026 richiede una chiave. Funziona con la chiave in `a_tables.js` |
 | Pollini, Landsat | Sezioni predisposte, nessuna fonte integrata |
