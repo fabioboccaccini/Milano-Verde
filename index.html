@@ -167,6 +167,21 @@ a{color:var(--water)}
   .leaflet-popup-content{font-size:14px;max-width:74vw}
 }
 
+/* iPhone e iPad: Safari disegna sotto la sua barra galleggiante solo il contenuto che sporge oltre il
+   fondo della pagina. La pagina è quindi più alta di 120px, la mappa ci passa sotto e tutto ciò che sta
+   in basso viene rialzato degli stessi 120px. Scorrimento e zoom della pagina sono bloccati (anche in e_ui.js). */
+@supports (-webkit-touch-callout:none){
+  html{--sotto:120px;overflow:hidden;overscroll-behavior:none;touch-action:none}
+  body{height:calc(100dvh + var(--sotto));touch-action:none}
+  .tab{touch-action:pan-y}
+  .leaflet-bottom{bottom:var(--sotto)}
+  @media (max-width:760px){
+    #hud{bottom:calc(22px + var(--sotto))}
+    #panel{height:calc(64dvh + var(--sotto));padding-bottom:var(--sotto)}
+  }
+}
+@media (max-width:760px){.leaflet-control-attribution{font-size:9px;line-height:1.3;padding:1px 4px}}
+
 /* posizione dell'utente */
 .me-ico{background:none;border:0}
 .me-ico i{display:block;width:14px;height:14px;background:var(--water);border:3px solid var(--white);outline:3px solid var(--ink);animation:me 1s steps(2) infinite}
@@ -710,7 +725,7 @@ const Loader = {
 let map, baseTiles, labelTiles;
 const isMobile = () => window.matchMedia('(max-width:760px)').matches;
 function initMap() {
-  map = window.map = L.map('map', {center: CFG.center, zoom: isMobile() ? 12 : 13, minZoom: 10, maxZoom: 19, zoomControl: false, preferCanvas: true, tap: false});
+  map = window.map = L.map('map', {center: CFG.center, zoom: isMobile() ? 12 : 13, minZoom: 10, maxZoom: 20, zoomControl: false, preferCanvas: true, tap: false});
   L.control.zoom({position: 'topright'}).addTo(map);
   map.createPane('vec').style.zIndex = 350;
   map.createPane('labels').style.zIndex = 420; map.getPane('labels').style.pointerEvents = 'none';
@@ -719,11 +734,13 @@ function initMap() {
   // arrivano con la scritta "API KEY REQUIRED". Senza chiave la pagina non li carica affatto.
   setBasemap(cartoKey());
   map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
+  // su telefono i crediti vanno in basso a sinistra, piccoli, lontani dagli avvisi in basso a destra
+  if (isMobile()) { map.attributionControl.setPosition('bottomleft'); map.attributionControl.setPrefix(false); }
   map.on('click', e => { hitAndPopup(e.containerPoint, e.latlng); });
   // le icone a sprite (glicini, orti, giardini, monumentali) si rimpiccioliscono allontanandosi
   const mk = () => { const z = map.getZoom(); map.getContainer().style.setProperty('--mk', z <= 11 ? 0.35 : z === 12 ? 0.45 : z === 13 ? 0.6 : z === 14 ? 0.75 : z === 15 ? 0.9 : z === 16 ? 1.05 : z === 17 ? 1.2 : 1.4);
     // i glicini seguono la scala degli alberi: 16, 24 e 32 px agli zoom 17, 18 e 19 (icona base 32 px)
-    map.getContainer().style.setProperty('--mkt', z >= 19 ? 1 : z === 18 ? 0.75 : z === 17 ? 0.5 : z === 16 ? 0.34 : z === 15 ? 0.28 : 0.22); };
+    map.getContainer().style.setProperty('--mkt', z >= 20 ? 1.5 : z >= 19 ? 1 : z === 18 ? 0.75 : z === 17 ? 0.5 : z === 16 ? 0.34 : z === 15 ? 0.28 : 0.22); };
   map.on('zoomend', mk); mk();
   map.on('zoomend', updateHud);
 }
@@ -1094,7 +1111,7 @@ function drawTrees(g, v) {
   }
   // celle della griglia visibili
   const pad = 40, cx0 = Math.floor((-pad - bx) / sc / CELL), cx1 = Math.floor((W + pad - bx) / sc / CELL), cy0 = Math.floor((-pad - by) / sc / CELL), cy1 = Math.floor((H + pad - by) / sc / CELL);
-  const z = v.z, size = z >= 19 ? 32 : z === 18 ? 24 : 16, vis = [];
+  const z = v.z, size = z >= 20 ? 48 : z >= 19 ? 32 : z === 18 ? 24 : 16, vis = [];
   for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
     const cell = T.grid.get((cx + 2048) * 4096 + (cy + 2048)); if (!cell) continue;
     for (let k = 0; k < cell.length; k++) if (S[cell[k]]) vis.push(cell[k]);
@@ -1120,7 +1137,7 @@ function drawTrees(g, v) {
 }
 function hitTree(p, v) {
   if (!ST.on.alberi || v.z < 15 || !T.n) return -1;
-  const sc = v.sc, r = v.z >= 17 ? (v.z >= 19 ? 20 : 14) : 9, yo = v.z >= 17 ? (v.z >= 19 ? 12 : 7) : 0;
+  const sc = v.sc, r = v.z >= 17 ? (v.z >= 20 ? 30 : v.z >= 19 ? 20 : 14) : 9, yo = v.z >= 17 ? (v.z >= 20 ? 18 : v.z >= 19 ? 12 : 7) : 0;
   const cx = Math.floor((p.x - v.bx) / sc / CELL), cy = Math.floor((p.y - v.by) / sc / CELL); let best = -1, bd = r * r;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     const cell = T.grid.get((cx + dx + 2048) * 4096 + (cy + dy + 2048)); if (!cell) continue;
@@ -1267,7 +1284,7 @@ function hitAndPopup(p, latlng, fallback) {
   const v = viewNow(), o = hitFauna(p, v);
   if (o) { L.popup({maxWidth: 280}).setLatLng([o.lat, o.lon]).setContent(faunaPopup(o)).openOn(map); return true; }
   const i = hitTree(p, v);
-  if (i >= 0) { L.popup({maxWidth: 300, offset: [0, v.z >= 17 ? -10 : 0]}).setLatLng([unY(T.y[i]), unX(T.x[i])]).setContent(treePopup(i)).openOn(map); return true; }
+  if (i >= 0) { L.popup({maxWidth: 300, offset: [0, v.z >= 20 ? -24 : v.z >= 17 ? -10 : 0]}).setLatLng([unY(T.y[i]), unX(T.x[i])]).setContent(treePopup(i)).openOn(map); return true; }
   if (fallback) fallback();
   return false;
 }
@@ -1767,6 +1784,12 @@ async function main() {
   // altre 400 osservazioni iNaturalist dopo l'apertura: una pagina sola basta per partire
   pFauna.then(() => sleep(1100)).then(() => loadInat(2));
 }
+/* La pagina non deve mai scorrere né ingrandirsi: su iPhone la mappa sporge sotto la barra di Safari
+   (vedi style.css) e qualunque spostamento farebbe ricomparire una fascia scura. Solo mappa e pannello
+   rispondono ai gesti. */
+addEventListener('scroll', () => { if (scrollY || scrollX) scrollTo(0, 0); }, {passive: true});
+if (window.visualViewport) visualViewport.addEventListener('scroll', () => { if (scrollY) scrollTo(0, 0); });
+document.addEventListener('gesturestart', e => { if (!(e.target.closest && e.target.closest('#map'))) e.preventDefault(); });
 window.addEventListener('DOMContentLoaded', main);
 
 </script>

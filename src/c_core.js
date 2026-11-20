@@ -134,7 +134,7 @@ const Loader = {
 let map, baseTiles, labelTiles;
 const isMobile = () => window.matchMedia('(max-width:760px)').matches;
 function initMap() {
-  map = window.map = L.map('map', {center: CFG.center, zoom: isMobile() ? 12 : 13, minZoom: 10, maxZoom: 19, zoomControl: false, preferCanvas: true, tap: false});
+  map = window.map = L.map('map', {center: CFG.center, zoom: isMobile() ? 12 : 13, minZoom: 10, maxZoom: 20, zoomControl: false, preferCanvas: true, tap: false});
   L.control.zoom({position: 'topright'}).addTo(map);
   map.createPane('vec').style.zIndex = 350;
   map.createPane('labels').style.zIndex = 420; map.getPane('labels').style.pointerEvents = 'none';
@@ -143,11 +143,13 @@ function initMap() {
   // arrivano con la scritta "API KEY REQUIRED". Senza chiave la pagina non li carica affatto.
   setBasemap(cartoKey());
   map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
+  // su telefono i crediti vanno in basso a sinistra, piccoli, lontani dagli avvisi in basso a destra
+  if (isMobile()) { map.attributionControl.setPosition('bottomleft'); map.attributionControl.setPrefix(false); }
   map.on('click', e => { hitAndPopup(e.containerPoint, e.latlng); });
   // le icone a sprite (glicini, orti, giardini, monumentali) si rimpiccioliscono allontanandosi
   const mk = () => { const z = map.getZoom(); map.getContainer().style.setProperty('--mk', z <= 11 ? 0.35 : z === 12 ? 0.45 : z === 13 ? 0.6 : z === 14 ? 0.75 : z === 15 ? 0.9 : z === 16 ? 1.05 : z === 17 ? 1.2 : 1.4);
     // i glicini seguono la scala degli alberi: 16, 24 e 32 px agli zoom 17, 18 e 19 (icona base 32 px)
-    map.getContainer().style.setProperty('--mkt', z >= 19 ? 1 : z === 18 ? 0.75 : z === 17 ? 0.5 : z === 16 ? 0.34 : z === 15 ? 0.28 : 0.22); };
+    map.getContainer().style.setProperty('--mkt', z >= 20 ? 1.5 : z >= 19 ? 1 : z === 18 ? 0.75 : z === 17 ? 0.5 : z === 16 ? 0.34 : z === 15 ? 0.28 : 0.22); };
   map.on('zoomend', mk); mk();
   map.on('zoomend', updateHud);
 }

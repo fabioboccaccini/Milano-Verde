@@ -372,4 +372,10 @@ async function main() {
   // altre 400 osservazioni iNaturalist dopo l'apertura: una pagina sola basta per partire
   pFauna.then(() => sleep(1100)).then(() => loadInat(2));
 }
+/* La pagina non deve mai scorrere né ingrandirsi: su iPhone la mappa sporge sotto la barra di Safari
+   (vedi style.css) e qualunque spostamento farebbe ricomparire una fascia scura. Solo mappa e pannello
+   rispondono ai gesti. */
+addEventListener('scroll', () => { if (scrollY || scrollX) scrollTo(0, 0); }, {passive: true});
+if (window.visualViewport) visualViewport.addEventListener('scroll', () => { if (scrollY) scrollTo(0, 0); });
+document.addEventListener('gesturestart', e => { if (!(e.target.closest && e.target.closest('#map'))) e.preventDefault(); });
 window.addEventListener('DOMContentLoaded', main);

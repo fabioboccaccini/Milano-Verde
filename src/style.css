@@ -155,6 +155,21 @@ a{color:var(--water)}
   .leaflet-popup-content{font-size:14px;max-width:74vw}
 }
 
+/* iPhone e iPad: Safari disegna sotto la sua barra galleggiante solo il contenuto che sporge oltre il
+   fondo della pagina. La pagina è quindi più alta di 120px, la mappa ci passa sotto e tutto ciò che sta
+   in basso viene rialzato degli stessi 120px. Scorrimento e zoom della pagina sono bloccati (anche in e_ui.js). */
+@supports (-webkit-touch-callout:none){
+  html{--sotto:120px;overflow:hidden;overscroll-behavior:none;touch-action:none}
+  body{height:calc(100dvh + var(--sotto));touch-action:none}
+  .tab{touch-action:pan-y}
+  .leaflet-bottom{bottom:var(--sotto)}
+  @media (max-width:760px){
+    #hud{bottom:calc(22px + var(--sotto))}
+    #panel{height:calc(64dvh + var(--sotto));padding-bottom:var(--sotto)}
+  }
+}
+@media (max-width:760px){.leaflet-control-attribution{font-size:9px;line-height:1.3;padding:1px 4px}}
+
 /* posizione dell'utente */
 .me-ico{background:none;border:0}
 .me-ico i{display:block;width:14px;height:14px;background:var(--water);border:3px solid var(--white);outline:3px solid var(--ink);animation:me 1s steps(2) infinite}

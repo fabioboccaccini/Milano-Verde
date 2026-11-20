@@ -74,7 +74,7 @@ function drawTrees(g, v) {
   }
   // celle della griglia visibili
   const pad = 40, cx0 = Math.floor((-pad - bx) / sc / CELL), cx1 = Math.floor((W + pad - bx) / sc / CELL), cy0 = Math.floor((-pad - by) / sc / CELL), cy1 = Math.floor((H + pad - by) / sc / CELL);
-  const z = v.z, size = z >= 19 ? 32 : z === 18 ? 24 : 16, vis = [];
+  const z = v.z, size = z >= 20 ? 48 : z >= 19 ? 32 : z === 18 ? 24 : 16, vis = [];
   for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
     const cell = T.grid.get((cx + 2048) * 4096 + (cy + 2048)); if (!cell) continue;
     for (let k = 0; k < cell.length; k++) if (S[cell[k]]) vis.push(cell[k]);
@@ -100,7 +100,7 @@ function drawTrees(g, v) {
 }
 function hitTree(p, v) {
   if (!ST.on.alberi || v.z < 15 || !T.n) return -1;
-  const sc = v.sc, r = v.z >= 17 ? (v.z >= 19 ? 20 : 14) : 9, yo = v.z >= 17 ? (v.z >= 19 ? 12 : 7) : 0;
+  const sc = v.sc, r = v.z >= 17 ? (v.z >= 20 ? 30 : v.z >= 19 ? 20 : 14) : 9, yo = v.z >= 17 ? (v.z >= 20 ? 18 : v.z >= 19 ? 12 : 7) : 0;
   const cx = Math.floor((p.x - v.bx) / sc / CELL), cy = Math.floor((p.y - v.by) / sc / CELL); let best = -1, bd = r * r;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     const cell = T.grid.get((cx + dx + 2048) * 4096 + (cy + dy + 2048)); if (!cell) continue;
@@ -247,7 +247,7 @@ function hitAndPopup(p, latlng, fallback) {
   const v = viewNow(), o = hitFauna(p, v);
   if (o) { L.popup({maxWidth: 280}).setLatLng([o.lat, o.lon]).setContent(faunaPopup(o)).openOn(map); return true; }
   const i = hitTree(p, v);
-  if (i >= 0) { L.popup({maxWidth: 300, offset: [0, v.z >= 17 ? -10 : 0]}).setLatLng([unY(T.y[i]), unX(T.x[i])]).setContent(treePopup(i)).openOn(map); return true; }
+  if (i >= 0) { L.popup({maxWidth: 300, offset: [0, v.z >= 20 ? -24 : v.z >= 17 ? -10 : 0]}).setLatLng([unY(T.y[i]), unX(T.x[i])]).setContent(treePopup(i)).openOn(map); return true; }
   if (fallback) fallback();
   return false;
 }
