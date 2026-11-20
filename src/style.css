@@ -161,3 +161,12 @@ a{color:var(--water)}
 @keyframes me{50%{background:var(--sky)}}
 #bar .btn.sm{white-space:nowrap}
 @media (max-width:760px){#bar{gap:6px;padding:8px 6px}#bar .btn.sm{padding:8px 6px}}
+/* telefono: barra simmetrica, due pulsanti quadrati con la sola icona e titolo centrato */
+@media (max-width:760px){
+  #bar{padding:8px 10px;gap:0}
+  #bar .sp{display:none}
+  #bar h1{flex:1;text-align:center;font-size:12px}
+  #bar #bpanel,#bar #bgeo{width:42px;height:42px;min-height:0;padding:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  #bar .lbl{display:none}
+  #bar .ico{font-size:18px;line-height:1;font-family:var(--tx)}
+}

@@ -173,7 +173,15 @@ a{color:var(--water)}
 @keyframes me{50%{background:var(--sky)}}
 #bar .btn.sm{white-space:nowrap}
 @media (max-width:760px){#bar{gap:6px;padding:8px 6px}#bar .btn.sm{padding:8px 6px}}
-
+/* telefono: barra simmetrica, due pulsanti quadrati con la sola icona e titolo centrato */
+@media (max-width:760px){
+  #bar{padding:8px 10px;gap:0}
+  #bar .sp{display:none}
+  #bar h1{flex:1;text-align:center;font-size:12px}
+  #bar #bpanel,#bar #bgeo{width:42px;height:42px;min-height:0;padding:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  #bar .lbl{display:none}
+  #bar .ico{font-size:18px;line-height:1;font-family:var(--tx)}
+}
 /* ===== PROVA iOS: varianti scelte con ?v=1, ?v=2, ?v=3 ===== */
 html.v1,html.v1 body{height:100lvh}
 html.v2 body,html.v3 body{overflow:visible;height:100dvh}
@@ -199,10 +207,10 @@ html.v2 #panel,html.v3 #panel,html.v2 #hud,html.v3 #hud,html.v2 #legend,html.v3 
 </div>
 
 <header id="bar">
-  <button class="btn" id="bpanel" aria-label="Apri o chiudi il pannello">&#9776; Opzioni</button>
+  <button class="btn" id="bpanel" aria-label="Apri o chiudi il pannello delle opzioni"><span class="ico">&#9776;</span><span class="lbl"> Opzioni</span></button>
   <h1>MILANO VERDE<small>BETA</small></h1>
   <div class="sp"></div>
-  <button class="btn sm" id="bgeo" title="Mostra la mia posizione" aria-label="Mostra la mia posizione">&#9678; Qui</button>
+  <button class="btn" id="bgeo" title="Mostra la mia posizione" aria-label="Mostra la mia posizione"><span class="ico">&#9678;</span><span class="lbl"> Qui</span></button>
 </header>
 
 <main>
@@ -1773,7 +1781,6 @@ async function main() {
 window.addEventListener('DOMContentLoaded', main);
 
 </script>
-
 <script>
 (function(){
   var v=(location.search.match(/v=(\d)/)||[])[1]||'0'; document.documentElement.classList.add('v'+v);
