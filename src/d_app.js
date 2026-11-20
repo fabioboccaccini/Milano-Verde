@@ -284,7 +284,7 @@ async function loadCkanGeo(key, label) {
   };
   const local = async () => {
     const gj = await fetchJSON(p.local, {timeout: 30000}); if (!gj.features) throw new Error('formato inatteso');
-    return [gj, 'copia nel sito del dataset del Comune (' + esc(p.id) + (p.localDate ? ', versione del ' + p.localDate : '') + ')'];
+    const v = gj._aggiornato || p.localDate || ''; return [gj, 'copia nel sito del dataset del Comune (' + esc(p.id) + (v ? ', versione del ' + esc(v.split('-').reverse().join('/')) : '') + ')'];
   };
   const order = !p.local ? [portal] : p.localFirst ? [local, portal] : [portal, local], errs = [];
   for (const fn of order) {

@@ -22,6 +22,8 @@ Mappa interattiva di flora e fauna di Milano in stile pixel art anni '90. Un'uni
 | `tools/gbif_nil_counts.py` | Rigenera `data/gbif_nil.json` (88 richieste in sequenza a GBIF, circa due minuti): da rilanciare ogni tanto |
 | `data/wiki.json` | Per ogni specie (o genere) del censimento: voce di Wikipedia (it, altrimenti en), prima frase, foto da Wikimedia Commons con autore e licenza. Generato da `tools/wiki_species.py` (circa 15 minuti); copertura: 88,7% degli alberi con la scheda della specie, 11% del genere, 99,6% con foto |
 | `tools/wiki_species.py` | Rigenera `data/wiki.json`, una richiesta al secondo |
+| `tools/copie_comune.py` | Rigenera `data/parchi.json` e `data/nil.geojson` dal portale del Comune |
+| `.github/workflows/aggiorna-dati.yml` | Aggiornamento automatico: il primo di ogni mese esegue `gbif_nil_counts`, `gbif_fauna` e `copie_comune`; `wiki_species` a gennaio, aprile, luglio e ottobre. Salva i file cambiati e il sito si ripubblica. Avvio manuale da Actions → Aggiorna i dati |
 | `data/alberi.zip` | Censimento degli alberi del Comune (ds2484, 31/03/2024, 247.779 alberi), ridotto alle colonne usate e compresso (2,6 MB) |
 
 Si modifica `src/`, poi si rigenera:
