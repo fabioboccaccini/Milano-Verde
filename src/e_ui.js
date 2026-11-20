@@ -218,7 +218,7 @@ function buildPanel() {
   // musica di sottofondo: spenta di default; se scelta, riparte al primo tocco (i browser vietano l'avvio automatico)
   ST.on.musica = musicPref();
   layerRow('musica', 'MUSICA', 'Sottofondo a 8 bit, composto per FogliaMI.', SPR.nota);
-  if (musicPref()) document.addEventListener('pointerdown', () => { if (musicPref() && !Chip.on) Chip.start(); }, {once: true, capture: true});
+  if (musicPref()) armMusic();
   document.addEventListener('visibilitychange', () => { if (!Chip.ctx) return; if (document.hidden) Chip.ctx.suspend(); else if (Chip.on) Chip.ctx.resume(); });
   document.querySelectorAll('[data-ico]').forEach(c => c.getContext('2d').drawImage(SPR[c.dataset.ico], 0, 0));
   document.querySelectorAll('[data-grp]').forEach(c => { c.onchange = () => { FA.groups[c.dataset.grp] = c.checked; if (faunaLayer) faunaLayer.redraw(); }; });
@@ -246,6 +246,19 @@ function buildPanel() {
   // sul pulsante della posizione lo stesso personaggio che compare sulla mappa
   $('#bgeo .ico').innerHTML = '<img class="pix" width="28" height="28" alt="" src="' + sprURL(SPR.me, 2) + '">';
   if (isMobile()) togglePanel(false);
+}
+/* Musica scelta in una visita precedente: riparte al primo gesto che il browser accetta per sbloccare l'audio.
+   Safari su iPhone non accetta il tocco iniziale (pointerdown) ma solo il dito che si stacca o il clic,
+   e a volte serve un secondo gesto: gli ascoltatori restano finché l'audio non risulta davvero attivo. */
+function armMusic() {
+  const evs = ['touchend', 'click', 'keydown'];
+  const done = () => evs.forEach(n => document.removeEventListener(n, go, true));
+  const go = () => {
+    if (!musicPref()) return done();
+    Chip.start(); if (!Chip.ctx) return done();
+    if (Chip.ctx.state === 'running') done(); else Chip.ctx.resume().then(() => { if (Chip.ctx.state === 'running') done(); }).catch(() => {});
+  };
+  evs.forEach(n => document.addEventListener(n, go, true));
 }
 /* Geolocalizzazione: la posizione resta nel browser, non viene inviata a nessuna fonte */
 let meMarker = null, meCircle = null, _msgT = 0;
