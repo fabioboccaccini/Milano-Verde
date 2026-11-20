@@ -1,6 +1,6 @@
 'use strict';
 /* =====================================================================
-   MILANO VERDE — pagina unica, dati letti in diretta dalle fonti.
+   LINFAMI — flora e fauna di Milano a 8 bit. Pagina unica, dati letti in diretta dalle fonti.
    Eccezioni: le tabelle botaniche (fioriture, allergeni, nomi comuni),
    compilate a mano e dichiarate come approssimazioni nella scheda Info,
    e i file in data/ (censimento degli alberi, conteggi GBIF per NIL).
@@ -37,6 +37,7 @@ const CFG = {
   overpass: ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'],
   inat: 'https://api.inaturalist.org/v1/observations',
   gbif: 'https://api.gbif.org/v1/occurrence/search',
+  wiki: 'data/wiki.json', // voce di Wikipedia, foto e licenza per specie: tools/wiki_species.py
   gbifNilCounts: 'data/gbif_nil.json', // conteggi per NIL precalcolati con tools/gbif_nil_counts.py
   gbifInat: '50c9509d-22c7-4a22-a47d-8c48425ef4a7', // dataset iNaturalist dentro GBIF: escluso per non contare due volte
   ebird: 'https://api.ebird.org/v2/data/obs/geo/recent', // richiede chiave personale (campo nel pannello)

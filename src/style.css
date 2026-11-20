@@ -17,6 +17,7 @@ canvas.pix,img.pix{image-rendering:pixelated;image-rendering:crisp-edges}
 #bar{display:flex;align-items:center;gap:10px;background:var(--ink);color:var(--paper);padding:8px 10px;border-bottom:4px solid var(--leaf2);flex:0 0 auto;z-index:1200}
 #bar h1{font-family:var(--px);font-size:14px;margin:0;letter-spacing:1px;color:var(--lime);text-shadow:2px 2px 0 var(--leaf1);white-space:nowrap}
 #bar h1 small{color:var(--sun);font-size:8px;margin-left:6px;text-shadow:none}
+.mi{color:var(--sun)}
 #bar .sp{flex:1}
 .btn{font-family:var(--px);font-size:9px;line-height:1;padding:10px 10px;min-height:38px;background:var(--paper);color:var(--ink);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--leaf1);cursor:pointer;text-transform:uppercase;border-radius:0}
 .btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--leaf1)}
@@ -46,6 +47,11 @@ main{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
 .pop .tag{display:inline-block;font-family:var(--px);font-size:7px;padding:3px 5px;margin:4px 4px 0 0;border:2px solid var(--ink);background:var(--lime)}
 .pop .tag.a3{background:var(--red);color:#fff}.pop .tag.a2{background:var(--orange)}.pop .tag.a1{background:var(--sun)}.pop .tag.fl{background:var(--pink)}
 .pop small{color:var(--slate)}
+.pop .wk{margin:6px 0 2px}
+.pop .wk img{width:100%;height:150px;object-fit:cover;margin:0}
+.pop figcaption{font-size:10px;line-height:1.3;color:var(--slate);margin-top:2px}
+.pop .wx{font-size:13px;margin:6px 0}
+.pop .wx a{color:var(--water)}
 .nil-tip{background:var(--ink);color:var(--paper);border:0;border-radius:0;font-family:var(--px);font-size:8px;padding:5px 6px;box-shadow:2px 2px 0 var(--leaf2)}
 .nil-tip:before{display:none}
 .spr-ico{background:none;border:0}
@@ -145,7 +151,7 @@ a{color:var(--water)}
 #lskip{margin-top:14px;visibility:hidden}
 
 @media (max-width:760px){
-  #bar h1{font-size:11px}#bar h1 small{display:none}
+  #bar h1{font-size:11px}#bar h1 small{font-size:6px;margin-left:5px;vertical-align:middle}
   #panel{top:auto;left:0;right:0;bottom:0;width:100%;max-width:none;height:64%;border-right:0;border-top:4px solid var(--ink)}
   #panel.closed{transform:translateY(104%)}
   #legend{left:8px!important;bottom:auto;top:8px;max-width:58vw;font-size:11px;padding:6px 8px}

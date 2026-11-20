@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Milano Verde · flora e fauna della città</title>
+<title>LinfaMI · flora e fauna di Milano a 8 bit</title>
 <meta name="description" content="Mappa interattiva di alberi, verde e fauna di Milano, costruita su dati aperti letti in diretta.">
 <!-- Dipendenze esterne: Leaflet (mappa) e un font pixel per i titoli. Tutto il resto è in questo file. -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
@@ -29,6 +29,7 @@ canvas.pix,img.pix{image-rendering:pixelated;image-rendering:crisp-edges}
 #bar{display:flex;align-items:center;gap:10px;background:var(--ink);color:var(--paper);padding:8px 10px;border-bottom:4px solid var(--leaf2);flex:0 0 auto;z-index:1200}
 #bar h1{font-family:var(--px);font-size:14px;margin:0;letter-spacing:1px;color:var(--lime);text-shadow:2px 2px 0 var(--leaf1);white-space:nowrap}
 #bar h1 small{color:var(--sun);font-size:8px;margin-left:6px;text-shadow:none}
+.mi{color:var(--sun)}
 #bar .sp{flex:1}
 .btn{font-family:var(--px);font-size:9px;line-height:1;padding:10px 10px;min-height:38px;background:var(--paper);color:var(--ink);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--leaf1);cursor:pointer;text-transform:uppercase;border-radius:0}
 .btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--leaf1)}
@@ -58,6 +59,11 @@ main{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
 .pop .tag{display:inline-block;font-family:var(--px);font-size:7px;padding:3px 5px;margin:4px 4px 0 0;border:2px solid var(--ink);background:var(--lime)}
 .pop .tag.a3{background:var(--red);color:#fff}.pop .tag.a2{background:var(--orange)}.pop .tag.a1{background:var(--sun)}.pop .tag.fl{background:var(--pink)}
 .pop small{color:var(--slate)}
+.pop .wk{margin:6px 0 2px}
+.pop .wk img{width:100%;height:150px;object-fit:cover;margin:0}
+.pop figcaption{font-size:10px;line-height:1.3;color:var(--slate);margin-top:2px}
+.pop .wx{font-size:13px;margin:6px 0}
+.pop .wx a{color:var(--water)}
 .nil-tip{background:var(--ink);color:var(--paper);border:0;border-radius:0;font-family:var(--px);font-size:8px;padding:5px 6px;box-shadow:2px 2px 0 var(--leaf2)}
 .nil-tip:before{display:none}
 .spr-ico{background:none;border:0}
@@ -157,7 +163,7 @@ a{color:var(--water)}
 #lskip{margin-top:14px;visibility:hidden}
 
 @media (max-width:760px){
-  #bar h1{font-size:11px}#bar h1 small{display:none}
+  #bar h1{font-size:11px}#bar h1 small{font-size:6px;margin-left:5px;vertical-align:middle}
   #panel{top:auto;left:0;right:0;bottom:0;width:100%;max-width:none;height:64%;border-right:0;border-top:4px solid var(--ink)}
   #panel.closed{transform:translateY(104%)}
   #legend{left:8px!important;bottom:auto;top:8px;max-width:58vw;font-size:11px;padding:6px 8px}
@@ -201,8 +207,8 @@ a{color:var(--water)}
 </head>
 <body>
 <div id="loader">
-  <h1>MILANO VERDE</h1>
-  <div class="tag">FLORA E FAUNA DELLA CITT&Agrave; &middot; DATI APERTI</div>
+  <h1>LINFA<span class="mi">MI</span></h1>
+  <div class="tag">FLORA E FAUNA DI MILANO &middot; 8 BIT &middot; DATI APERTI</div>
   <canvas id="plant" class="pix" width="48" height="56"></canvas>
   <div id="lbar"></div>
   <div id="lpct">0%</div>
@@ -212,7 +218,7 @@ a{color:var(--water)}
 
 <header id="bar">
   <button class="btn" id="bpanel" aria-label="Apri o chiudi il pannello delle opzioni"><span class="ico">&#9776;</span><span class="lbl"> Opzioni</span></button>
-  <h1>MILANO VERDE<small>BETA</small></h1>
+  <h1>LINFA<span class="mi">MI</span><small>8 BIT</small></h1>
   <div class="sp"></div>
   <button class="btn" id="bgeo" title="Mostra la mia posizione" aria-label="Mostra la mia posizione"><span class="ico">&#9678;</span><span class="lbl"> Qui</span></button>
 </header>
@@ -270,7 +276,7 @@ a{color:var(--water)}
 <script>
 'use strict';
 /* =====================================================================
-   MILANO VERDE — pagina unica, dati letti in diretta dalle fonti.
+   LINFAMI — flora e fauna di Milano a 8 bit. Pagina unica, dati letti in diretta dalle fonti.
    Eccezioni: le tabelle botaniche (fioriture, allergeni, nomi comuni),
    compilate a mano e dichiarate come approssimazioni nella scheda Info,
    e i file in data/ (censimento degli alberi, conteggi GBIF per NIL).
@@ -307,6 +313,7 @@ const CFG = {
   overpass: ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'],
   inat: 'https://api.inaturalist.org/v1/observations',
   gbif: 'https://api.gbif.org/v1/occurrence/search',
+  wiki: 'data/wiki.json', // voce di Wikipedia, foto e licenza per specie: tools/wiki_species.py
   gbifNilCounts: 'data/gbif_nil.json', // conteggi per NIL precalcolati con tools/gbif_nil_counts.py
   gbifInat: '50c9509d-22c7-4a22-a47d-8c48425ef4a7', // dataset iNaturalist dentro GBIF: escluso per non contare due volte
   ebird: 'https://api.ebird.org/v2/data/obs/geo/recent', // richiede chiave personale (campo nel pannello)
@@ -1146,6 +1153,19 @@ function hitTree(p, v) {
   }
   return best;
 }
+/* Wikipedia: scheda per specie (o per genere) preparata da tools/wiki_species.py */
+let WIKI = null;
+function wikiOf(si) { if (!WIKI) return null; const full = T.species[si]; return WIKI[full] || WIKI[full.split(' ')[0]] || null; }
+function wikiPhoto(w) {
+  if (!w || !w.i) return '';
+  return '<figure class="wk"><a href="' + esc(w.f) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + esc(w.i) + '" alt="' + esc(w.t) + '"></a>' +
+    '<figcaption>Foto: ' + esc(w.a) + ' · ' + esc(w.l) + ' · Wikimedia Commons' + (w.liv === 'genere' ? ' · esemplare del genere' : '') + '</figcaption></figure>';
+}
+function wikiText(w) {
+  if (!w) return '';
+  return '<p class="wx">' + (w.x ? esc(w.x) + ' ' : '') + '<a href="' + esc(w.u) + '" target="_blank" rel="noopener">' + (w.lang === 'en' ? 'Leggi su Wikipedia (in inglese)' : 'Leggi su Wikipedia') + '</a>' +
+    (w.liv === 'genere' ? ' <small>(voce sul genere ' + esc(w.t) + ')</small>' : '') + '</p>';
+}
 function mesiTxt(m) { return m.map(x => MESI[x - 1].toLowerCase()).join(', '); }
 function treePopup(i) {
   const si = T.sp[i], m = metaOf(si), g = m.genus, nome = NOMI[g], o = NIL.byId[T.nil[i]], vr = T.vars[T.vr[i]], pl = T.places[T.pl[i]];
@@ -1158,11 +1178,12 @@ function treePopup(i) {
   if (o) rows.push(['Quartiere', esc(o.name)]);
   if (m.fl) rows.push(['Fioritura', mesiTxt(m.fl.m) + (m.fl.v ? '' : ' (poco vistosa)')]);
   if (m.al) rows.push(['Polline', 'potenziale ' + ALL_LBL[m.al.l] + ', ' + mesiTxt(m.al.m)]);
+  const w = wikiOf(si);
   return '<div class="pop"><h3>' + esc((nome || g).toUpperCase()) + '</h3><div class="sci">' + esc(T.species[si]) + (vr ? ' ‘' + esc(vr) + '’' : '') + '</div>' +
     (m.fl && m.fl.m.indexOf(ST.month) >= 0 ? '<span class="tag fl">IN FIORE A ' + MESI[ST.month - 1].toUpperCase() + '</span>' : '') +
     (m.al ? '<span class="tag a' + m.al.l + '">POLLINE ' + ALL_LBL[m.al.l].toUpperCase() + '</span>' : '') +
-    '<table>' + rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('') + '</table>' +
-    '<small>Fonte: ' + (T.source === 'osm' ? 'OpenStreetMap' : 'Comune di Milano') + '. Fioritura e polline: stime per genere.</small></div>';
+    wikiPhoto(w) + '<table>' + rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('') + '</table>' + wikiText(w) +
+    '<small>Fonte: ' + (T.source === 'osm' ? 'OpenStreetMap' : 'Comune di Milano') + '. Fioritura e polline: stime per genere.' + (w ? ' Testo e foto da Wikipedia.' : '') + '</small></div>';
 }
 
 /* =====================================================================
@@ -1714,6 +1735,7 @@ function renderStatic() {
     '<li><b>iNaturalist</b> (inaturalist.org): osservazioni e fotografie dei singoli utenti, ciascuna con la propria licenza indicata nella scheda. Uso tramite API pubblica.</li>' +
     '<li><b>GBIF</b> (gbif.org): occorrenze dai dataset aderenti, con licenze CC0, CC BY o CC BY-NC indicate per record. GBIF.org, Occurrence Search.</li>' +
     '<li><b>eBird</b> (Cornell Lab of Ornithology): solo se inserisci una tua chiave, secondo i termini d\'uso dell\'API.</li>' +
+    '<li><b>Wikipedia e Wikimedia Commons</b>: nei popup degli alberi, la prima frase della voce (testo CC BY-SA 4.0, con link alla voce) e una foto, con autore e licenza indicati sotto l\'immagine.</li>' +
     '<li><b>OpenStreetMap</b>: dati © OpenStreetMap contributors, licenza <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">ODbL</a>, per la mappa di base e, come ripiego, per gli alberi (Overpass API).</li>' +
     '<li><b>CARTO</b>: tasselli della mappa di base (Positron), © CARTO.</li>' +
     '<li><b>Leaflet</b> 1.9.4 (BSD-2) per la mappa; font Press Start 2P (SIL OFL) per i titoli.</li>' +
@@ -1782,6 +1804,9 @@ async function main() {
   await Promise.all([pPop, pIdx, pParchi, pOrti, pGiard, pMon, treesSoon, faunaSoon]);
   clearTimeout(hard); Loader.msg('Pronto!'); Loader.finish();
   setMode('none');
+  fetchJSON(CFG.wiki, {timeout: 30000}).then(j => { WIKI = j.species || null; const n = WIKI ? Object.keys(WIKI).length : 0;
+    src('wiki', 'Wikipedia, schede delle specie', n ? 'ok' : 'err', fmt(n) + ' schede con testo, link e foto (dove disponibile), raccolte il ' + esc(String(j.updated || '').split('-').reverse().join('/')) + '.'); })
+    .catch(e => src('wiki', 'Wikipedia, schede delle specie', 'err', esc(e.message) + ': i popup degli alberi restano senza foto.'));
   // altre 400 osservazioni iNaturalist dopo l'apertura: una pagina sola basta per partire
   pFauna.then(() => sleep(1100)).then(() => loadInat(2));
 }

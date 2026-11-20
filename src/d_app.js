@@ -108,6 +108,19 @@ function hitTree(p, v) {
   }
   return best;
 }
+/* Wikipedia: scheda per specie (o per genere) preparata da tools/wiki_species.py */
+let WIKI = null;
+function wikiOf(si) { if (!WIKI) return null; const full = T.species[si]; return WIKI[full] || WIKI[full.split(' ')[0]] || null; }
+function wikiPhoto(w) {
+  if (!w || !w.i) return '';
+  return '<figure class="wk"><a href="' + esc(w.f) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + esc(w.i) + '" alt="' + esc(w.t) + '"></a>' +
+    '<figcaption>Foto: ' + esc(w.a) + ' · ' + esc(w.l) + ' · Wikimedia Commons' + (w.liv === 'genere' ? ' · esemplare del genere' : '') + '</figcaption></figure>';
+}
+function wikiText(w) {
+  if (!w) return '';
+  return '<p class="wx">' + (w.x ? esc(w.x) + ' ' : '') + '<a href="' + esc(w.u) + '" target="_blank" rel="noopener">' + (w.lang === 'en' ? 'Leggi su Wikipedia (in inglese)' : 'Leggi su Wikipedia') + '</a>' +
+    (w.liv === 'genere' ? ' <small>(voce sul genere ' + esc(w.t) + ')</small>' : '') + '</p>';
+}
 function mesiTxt(m) { return m.map(x => MESI[x - 1].toLowerCase()).join(', '); }
 function treePopup(i) {
   const si = T.sp[i], m = metaOf(si), g = m.genus, nome = NOMI[g], o = NIL.byId[T.nil[i]], vr = T.vars[T.vr[i]], pl = T.places[T.pl[i]];
@@ -120,11 +133,12 @@ function treePopup(i) {
   if (o) rows.push(['Quartiere', esc(o.name)]);
   if (m.fl) rows.push(['Fioritura', mesiTxt(m.fl.m) + (m.fl.v ? '' : ' (poco vistosa)')]);
   if (m.al) rows.push(['Polline', 'potenziale ' + ALL_LBL[m.al.l] + ', ' + mesiTxt(m.al.m)]);
+  const w = wikiOf(si);
   return '<div class="pop"><h3>' + esc((nome || g).toUpperCase()) + '</h3><div class="sci">' + esc(T.species[si]) + (vr ? ' ‘' + esc(vr) + '’' : '') + '</div>' +
     (m.fl && m.fl.m.indexOf(ST.month) >= 0 ? '<span class="tag fl">IN FIORE A ' + MESI[ST.month - 1].toUpperCase() + '</span>' : '') +
     (m.al ? '<span class="tag a' + m.al.l + '">POLLINE ' + ALL_LBL[m.al.l].toUpperCase() + '</span>' : '') +
-    '<table>' + rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('') + '</table>' +
-    '<small>Fonte: ' + (T.source === 'osm' ? 'OpenStreetMap' : 'Comune di Milano') + '. Fioritura e polline: stime per genere.</small></div>';
+    wikiPhoto(w) + '<table>' + rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('') + '</table>' + wikiText(w) +
+    '<small>Fonte: ' + (T.source === 'osm' ? 'OpenStreetMap' : 'Comune di Milano') + '. Fioritura e polline: stime per genere.' + (w ? ' Testo e foto da Wikipedia.' : '') + '</small></div>';
 }
 
 /* =====================================================================

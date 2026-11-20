@@ -301,6 +301,7 @@ function renderStatic() {
     '<li><b>iNaturalist</b> (inaturalist.org): osservazioni e fotografie dei singoli utenti, ciascuna con la propria licenza indicata nella scheda. Uso tramite API pubblica.</li>' +
     '<li><b>GBIF</b> (gbif.org): occorrenze dai dataset aderenti, con licenze CC0, CC BY o CC BY-NC indicate per record. GBIF.org, Occurrence Search.</li>' +
     '<li><b>eBird</b> (Cornell Lab of Ornithology): solo se inserisci una tua chiave, secondo i termini d\'uso dell\'API.</li>' +
+    '<li><b>Wikipedia e Wikimedia Commons</b>: nei popup degli alberi, la prima frase della voce (testo CC BY-SA 4.0, con link alla voce) e una foto, con autore e licenza indicati sotto l\'immagine.</li>' +
     '<li><b>OpenStreetMap</b>: dati © OpenStreetMap contributors, licenza <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">ODbL</a>, per la mappa di base e, come ripiego, per gli alberi (Overpass API).</li>' +
     '<li><b>CARTO</b>: tasselli della mappa di base (Positron), © CARTO.</li>' +
     '<li><b>Leaflet</b> 1.9.4 (BSD-2) per la mappa; font Press Start 2P (SIL OFL) per i titoli.</li>' +
@@ -369,6 +370,9 @@ async function main() {
   await Promise.all([pPop, pIdx, pParchi, pOrti, pGiard, pMon, treesSoon, faunaSoon]);
   clearTimeout(hard); Loader.msg('Pronto!'); Loader.finish();
   setMode('none');
+  fetchJSON(CFG.wiki, {timeout: 30000}).then(j => { WIKI = j.species || null; const n = WIKI ? Object.keys(WIKI).length : 0;
+    src('wiki', 'Wikipedia, schede delle specie', n ? 'ok' : 'err', fmt(n) + ' schede con testo, link e foto (dove disponibile), raccolte il ' + esc(String(j.updated || '').split('-').reverse().join('/')) + '.'); })
+    .catch(e => src('wiki', 'Wikipedia, schede delle specie', 'err', esc(e.message) + ': i popup degli alberi restano senza foto.'));
   // altre 400 osservazioni iNaturalist dopo l'apertura: una pagina sola basta per partire
   pFauna.then(() => sleep(1100)).then(() => loadInat(2));
 }

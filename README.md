@@ -1,4 +1,6 @@
-# Milano Verde
+# LinfaMI
+
+Flora e fauna di Milano a 8 bit: https://nashkaze.github.io/linfami/
 
 Mappa interattiva di flora e fauna di Milano in stile pixel art anni '90. Un'unica pagina HTML che legge i dati in diretta dalle fonti aperte. Fanno eccezione le tabelle botaniche scritte a mano (fioriture, allergeni, nomi comuni) e i file in `data/` (censimento degli alberi, confini dei NIL di riserva, conteggi GBIF per quartiere).
 
@@ -17,13 +19,15 @@ Mappa interattiva di flora e fauna di Milano in stile pixel art anni '90. Un'uni
 | `data/parchi.json` | Copia dei parchi e giardini (ds89, versione del 06/05/2024) con le sole colonne usate e coordinate al metro: 1,1 MB, 180 KB compressi, contro 5 MB non compressi dal portale. È la prima scelta; il portale è il ripiego. Da rigenerare se il Comune aggiorna il dataset |
 | `data/gbif_nil.json` | Conteggi GBIF delle occorrenze animali per NIL, generati da `tools/gbif_nil_counts.py` |
 | `tools/gbif_nil_counts.py` | Rigenera `data/gbif_nil.json` (88 richieste in sequenza a GBIF, circa due minuti): da rilanciare ogni tanto |
+| `data/wiki.json` | Per ogni specie (o genere) del censimento: voce di Wikipedia (it, altrimenti en), prima frase, foto da Wikimedia Commons con autore e licenza. Generato da `tools/wiki_species.py` (circa 15 minuti); copertura: 88,7% degli alberi con la scheda della specie, 11% del genere, 99,6% con foto |
+| `tools/wiki_species.py` | Rigenera `data/wiki.json`, una richiesta al secondo |
 | `data/alberi.zip` | Censimento degli alberi del Comune (ds2484, 31/03/2024, 247.779 alberi), ridotto alle colonne usate e compresso (2,6 MB) |
 
 Si modifica `src/`, poi si rigenera:
 
 ```
 python3 build.py          # scrive index.html
-python3 build.py v9       # scrive milano-verde-v9.html (copia di lavoro, ignorata da git)
+python3 build.py v9       # scrive linfami-v9.html (copia di lavoro, ignorata da git)
 ```
 
 Dipendenze esterne caricate da CDN: Leaflet 1.9.4 (con hash di integrità) e il font Press Start 2P.
