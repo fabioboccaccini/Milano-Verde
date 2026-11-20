@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LinfaMI · flora e fauna di Milano a 8 bit</title>
+<title>FogliaMI · flora e fauna di Milano a 8 bit</title>
 <meta name="description" content="Mappa interattiva di alberi, verde e fauna di Milano, costruita su dati aperti letti in diretta.">
 <!-- Dipendenze esterne: Leaflet (mappa) e un font pixel per i titoli. Tutto il resto è in questo file. -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
@@ -208,7 +208,7 @@ a{color:var(--water)}
 </head>
 <body>
 <div id="loader">
-  <h1>LINFA<span class="mi">MI</span></h1>
+  <h1>FOGLIA<span class="mi">MI</span></h1>
   <div class="tag">FLORA E FAUNA DI MILANO &middot; 8 BIT &middot; DATI APERTI</div>
   <canvas id="plant" class="pix" width="48" height="56"></canvas>
   <div id="lbar"></div>
@@ -219,7 +219,7 @@ a{color:var(--water)}
 
 <header id="bar">
   <button class="btn" id="bpanel" aria-label="Apri o chiudi il pannello delle opzioni"><span class="ico">&#9776;</span><span class="lbl"> Opzioni</span></button>
-  <h1>LINFA<span class="mi">MI</span><small>8 BIT</small></h1>
+  <h1>FOGLIA<span class="mi">MI</span><small>8 BIT</small></h1>
   <div class="sp"></div>
   <button class="btn" id="bgeo" title="Mostra la mia posizione" aria-label="Mostra la mia posizione"><span class="ico">&#9678;</span><span class="lbl"> Qui</span></button>
 </header>
@@ -277,7 +277,7 @@ a{color:var(--water)}
 <script>
 'use strict';
 /* =====================================================================
-   LINFAMI — flora e fauna di Milano a 8 bit. Pagina unica, dati letti in diretta dalle fonti.
+   FOGLIAMI — flora e fauna di Milano a 8 bit. Pagina unica, dati letti in diretta dalle fonti.
    Eccezioni: le tabelle botaniche (fioriture, allergeni, nomi comuni),
    compilate a mano e dichiarate come approssimazioni nella scheda Info,
    e i file in data/ (censimento degli alberi, conteggi GBIF per NIL).

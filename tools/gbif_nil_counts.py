@@ -13,7 +13,7 @@ import datetime, json, os, sys, time, urllib.parse, urllib.request
 NIL_URL = 'https://dati.comune.milano.it/dataset/e8e765fc-d882-40b8-95d8-16ff3d39eb7c/resource/9c4e0776-56fc-4f3d-8a90-f4992a3be426/download/ds964_nil_wm.geojson'
 GBIF = 'https://api.gbif.org/v1/occurrence/search'
 OUT = os.path.join(os.path.dirname(__file__), '..', 'data', 'gbif_nil.json')
-UA = {'User-Agent': 'linfami/1.0 (https://github.com/nashkaze/linfami)'}
+UA = {'User-Agent': 'fogliami/1.0 (https://github.com/nashkaze/fogliami)'}
 MAX_PTS = 120   # punti del poligono semplificato: tiene corto l'URL
 PAUSA = 1.0     # secondi tra una richiesta e l'altra
 

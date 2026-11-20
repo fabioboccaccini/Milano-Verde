@@ -1,6 +1,6 @@
-# LinfaMI
+# FogliaMI
 
-Flora e fauna di Milano a 8 bit: https://nashkaze.github.io/linfami/
+Flora e fauna di Milano a 8 bit: https://nashkaze.github.io/fogliami/
 
 Mappa interattiva di flora e fauna di Milano in stile pixel art anni '90. Un'unica pagina HTML che legge i dati in diretta dalle fonti aperte. Fanno eccezione le tabelle botaniche scritte a mano (fioriture, allergeni, nomi comuni) e i file in `data/` (censimento degli alberi, confini dei NIL di riserva, conteggi GBIF per quartiere).
 
@@ -27,7 +27,7 @@ Si modifica `src/`, poi si rigenera:
 
 ```
 python3 build.py          # scrive index.html
-python3 build.py v9       # scrive linfami-v9.html (copia di lavoro, ignorata da git)
+python3 build.py v9       # scrive fogliami-v9.html (copia di lavoro, ignorata da git)
 ```
 
 Dipendenze esterne caricate da CDN: Leaflet 1.9.4 (con hash di integrità) e il font Press Start 2P.

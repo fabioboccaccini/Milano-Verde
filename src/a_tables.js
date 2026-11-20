@@ -1,6 +1,6 @@
 'use strict';
 /* =====================================================================
-   LINFAMI — flora e fauna di Milano a 8 bit. Pagina unica, dati letti in diretta dalle fonti.
+   FOGLIAMI — flora e fauna di Milano a 8 bit. Pagina unica, dati letti in diretta dalle fonti.
    Eccezioni: le tabelle botaniche (fioriture, allergeni, nomi comuni),
    compilate a mano e dichiarate come approssimazioni nella scheda Info,
    e i file in data/ (censimento degli alberi, conteggi GBIF per NIL).

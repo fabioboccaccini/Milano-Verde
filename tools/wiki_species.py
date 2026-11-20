@@ -14,7 +14,7 @@ import csv, datetime, html, io, json, os, re, sys, time, urllib.error, urllib.pa
 ROOT = os.path.join(os.path.dirname(__file__), '..')
 SRC = os.path.join(ROOT, 'data', 'alberi.zip')
 OUT = os.path.join(ROOT, 'data', 'wiki.json')
-UA = {'User-Agent': 'linfami/1.0 (https://github.com/nashkaze/linfami)'}
+UA = {'User-Agent': 'fogliami/1.0 (https://github.com/nashkaze/fogliami)'}
 PAUSA = 1.0
 # nomi del censimento che Wikipedia conosce sotto un altro titolo
 SINONIMI = {
