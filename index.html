@@ -585,36 +585,47 @@ function sprIcon(c, px, cls) { return L.divIcon({className: 'spr-ico' + (cls ? '
 /* ---------------------------------------------------------------------
    Schermata di caricamento: una pianta che cresce col caricamento reale
    --------------------------------------------------------------------- */
-const FLOWER = ['...ppp.....','..ppppp.pp.','..ppppppppp','.pp.pyyppp.','ppppyyyyp..','pppyyoyyppp','.ppyyyyyppp','..ppyyypp..','.ppppppppp.','.ppp.pppp..','.....ppp...'];
+/* Un ciliegio che attraversa le stagioni mentre la barra si riempie:
+   inverno (rami spogli) → fioritura rosa → foglie verde chiaro → verde scuro → autunno rosso a 100% */
+const TREE_BR = [[23,31,14,20],[14,20,10,15],[14,20,18,14],[25,30,34,19],[34,19,38,14],[34,19,30,13],[24,30,24,13],[24,13,21,9],[24,13,28,9],[23,35,17,28],[25,34,31,28]];
+const TREE_CROWN = [[14,18,7.5],[24,12,8.5],[34,17,7.5],[19,24,6],[30,24,6],[24,20,7]];
+const SEASON = {fiore: ['#fde6f0', '#f6b3d0', '#e17aa8'], chiaro: ['#d4ef84', '#9fd45e', '#6db552'], scuro: ['#4f9e55', '#2f7a44', '#1f5c3a'], autunno: ['#f6c644', '#e8853a', '#c9413f']};
 function drawPlant(g, p, t) {
   const W = 48, H = 56, px = (x, y, c, w, h) => { g.fillStyle = c; g.fillRect(x, y, w || 1, h || 1); };
   g.clearRect(0, 0, W, H);
   // terreno
   px(6, 47, '#4d2f1b', 36, 9); px(8, 46, PAL.brown, 32, 2); px(6, 48, PAL.brown, 36, 3);
   for (let i = 0; i < 26; i++) px(7 + Math.floor(hash2(i, 1, 2) * 34), 49 + Math.floor(hash2(i, 2, 2) * 6), i % 3 ? '#3a2314' : '#9a6a40');
-  px(10, 46, PAL.leaf2, 3, 1); px(34, 46, PAL.leaf2, 4, 1); px(20, 46, PAL.leaf3, 2, 1);
-  if (p < 0.06) { px(23, 44, PAL.sand, 2, 2); px(23, 45, '#b89a5a', 2, 1); return; }
-  const stem = Math.round(Math.min(1, (p - 0.04) / 0.72) * 28);
-  for (let i = 0; i < stem; i++) { const y = 45 - i, sx = 23 + ((i > 9 && i < 17) ? 1 : 0); px(sx, y, PAL.leaf2); px(sx + 1, y, PAL.leaf1); }
-  const leaf = (y, dir, size) => {
-    const sx = 23 + ((45 - y > 9 && 45 - y < 17) ? 1 : 0);
-    for (let i = 1; i <= size; i++) {
-      const x = dir > 0 ? sx + 1 + i : sx - i, hgt = i < size ? (i === 1 ? 1 : 2) : 1;
-      px(x, y - Math.min(i, 2), i % 2 ? PAL.leaf3 : PAL.leaf2, 1, hgt + 1);
-    }
-    px(dir > 0 ? sx + 1 + size : sx - size, y - 2, PAL.lime);
-  };
-  [[5, 1], [10, -1], [15, 1], [20, -1], [25, 1]].forEach(([at, dir]) => { if (stem >= at) leaf(45 - at, dir, Math.min(6, 2 + Math.floor((stem - at) / 2))); });
-  const top = 45 - stem, sx = 23 + ((stem > 9 && stem < 17) ? 1 : 0);
-  if (p >= 1) {
-    const ox = sx - 5, oy = top - 9;
-    FLOWER.forEach((r, y) => { for (let x = 0; x < r.length; x++) { const ch = r[x]; if (ch === '.') continue; px(ox + x, oy + y, ch === 'p' ? ((x + y) % 5 === 0 ? '#fbd0e4' : PAL.pink) : ch === 'y' ? PAL.sun : PAL.orange); } });
-    for (let i = 0; i < 6; i++) if (Math.floor(t / 180 + i * 1.7) % 3 === 0) px(6 + Math.floor(hash2(i, 5, Math.floor(t / 540)) * 36), 4 + Math.floor(hash2(i, 6, Math.floor(t / 540)) * 30), i % 2 ? PAL.sun : PAL.white);
-  } else if (p > 0.72) {
-    const s = p > 0.9 ? 3 : 2;
-    px(sx - s + 1, top - 2 * s + 1, PAL.leaf3, 2 * s, 2 * s); px(sx - s + 2, top - 2 * s, PAL.leaf3, 2 * s - 2, 1);
-    if (p > 0.84) px(sx - 1, top - 2 * s, PAL.pink, 3, s);
-  } else if (stem > 2) { px(sx, top - 1, PAL.lime, 2, 1); }
+  px(10, 46, PAL.leaf2, 3, 1); px(34, 46, PAL.leaf2, 4, 1);
+  // tronco con il colletto alla base
+  for (let y = 30; y <= 46; y++) { px(22, y, '#9a6a40'); px(23, y, '#7a4b2b', 2, 1); px(25, y, '#4d2f1b'); }
+  px(20, 45, '#7a4b2b', 2, 2); px(26, 45, '#4d2f1b', 2, 2); px(21, 44, '#7a4b2b'); px(26, 44, '#4d2f1b');
+  // rami (linee a pixel)
+  const line = (x0, y0, x1, y1, c) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let i = 0; i <= n; i++) px(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), c); };
+  TREE_BR.forEach(([x0, y0, x1, y1], i) => { line(x0, y0, x1, y1, '#5c3a22'); if (i < 3 || i === 6) line(x0 + 1, y0, x1 + 1, y1, '#4d2f1b'); });
+  // stagione corrente: quanto è piena la chioma e con quali colori
+  const ease = v => Math.max(0, Math.min(1, v));
+  let dens, mix; // mix: [paletta di partenza, paletta di arrivo, quota dell'arrivo]
+  if (p < 0.15) { dens = 0; }
+  else if (p < 0.38) { dens = 0.15 + ease((p - 0.15) / 0.2) * 0.65; mix = ['fiore', 'fiore', 0]; }
+  else if (p < 0.6) { dens = 0.8 + ease((p - 0.38) / 0.2) * 0.12; mix = ['fiore', 'chiaro', ease((p - 0.38) / 0.17)]; }
+  else if (p < 0.86) { dens = 0.92 + ease((p - 0.6) / 0.2) * 0.06; mix = ['chiaro', 'scuro', ease((p - 0.6) / 0.2)]; }
+  else { dens = 0.97; mix = ['scuro', 'autunno', ease((p - 0.86) / 0.13)]; }
+  if (p < 0.15) { // inverno: un po' di neve sui rami
+    TREE_BR.forEach(([x0, y0, x1, y1], i) => { if (i % 2 === 0) px(Math.round((x0 + x1) / 2), Math.round((y0 + y1) / 2) - 1, PAL.white); });
+    return;
+  }
+  for (let y = 2; y < 34; y++) for (let x = 2; x < 46; x++) {
+    let inC = null; for (const c of TREE_CROWN) { const dx = x + 0.5 - c[0], dy = y + 0.5 - c[1]; if (dx * dx + dy * dy <= c[2] * c[2]) { inC = c; break; } }
+    if (!inC || hash2(x, y, 7) > dens) continue;
+    const pal = SEASON[hash2(x, y, 9) < mix[2] ? mix[1] : mix[0]];
+    const d = ((x - inC[0]) + (y - inC[1])) / inC[2] + (hash2(x, y, 11) - 0.5) * 0.6; // luce da in alto a sinistra
+    px(x, y, pal[d < -0.45 ? 0 : d > 0.35 ? 2 : 1]);
+  }
+  if (p >= 1) { // autunno pieno: qualche foglia che cade e un luccichio
+    for (let i = 0; i < 5; i++) { const ph = (t / 2600 + i / 5) % 1; px(8 + Math.floor(hash2(i, 3, 3) * 32) + Math.round(Math.sin(ph * 6.28 + i) * 2), 26 + Math.floor(ph * 19), SEASON.autunno[i % 3]); }
+    for (let i = 0; i < 4; i++) if (Math.floor(t / 180 + i * 1.7) % 3 === 0) px(6 + Math.floor(hash2(i, 5, Math.floor(t / 540)) * 36), 2 + Math.floor(hash2(i, 6, Math.floor(t / 540)) * 30), PAL.white);
+  }
 }
 
 /* =====================================================================
