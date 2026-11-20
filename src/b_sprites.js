@@ -167,6 +167,58 @@ function sprIcon(c, px, cls) { return L.divIcon({className: 'spr-ico' + (cls ? '
 /* ---------------------------------------------------------------------
    Schermata di caricamento: una pianta che cresce col caricamento reale
    --------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------
+   Musica a 8 bit, originale e generata dal codice (Web Audio): onda quadra per la melodia,
+   triangolare per il basso, rumore per il ritmo. Parte solo dopo un tocco (regola dei browser).
+   --------------------------------------------------------------------- */
+const Chip = {
+  ctx: null, on: false, timer: 0, step: 0, next: 0, master: null, noise: null,
+  BPM: 132,
+  // melodia (8 note per battuta, 4 battute) e basso; 0 = pausa. Frequenze in semitoni da La4 = 440 Hz
+  LEAD: [ 7,10,12,10, 7, 5, 3, 5,   7, 0, 7,10,12, 0,15, 0,  14,12,10, 7, 5, 7,10, 0,  12, 0,10, 7, 5, 3, 5, 0],
+  BASS: [-21,-21,-9,-21, -24,-24,-12,-24, -28,-28,-16,-28, -26,-26,-14,-26],
+  hz(n) { return 440 * Math.pow(2, n / 12); },
+  init() {
+    if (this.ctx) return true;
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
+    this.ctx = new AC(); this.master = this.ctx.createGain(); this.master.gain.value = 0.16; this.master.connect(this.ctx.destination);
+    const b = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.05, this.ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; this.noise = b; return true;
+  },
+  tone(type, f, t, len, vol) {
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + len); o.connect(g); g.connect(this.master); o.start(t); o.stop(t + len + 0.02);
+  },
+  hat(t) { const s = this.ctx.createBufferSource(), g = this.ctx.createGain(), f = this.ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 6000; s.buffer = this.noise; g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04); s.connect(f); f.connect(g); g.connect(this.master); s.start(t); },
+  start() {
+    if (!this.init()) return; if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.on) return; this.on = true; this.master.gain.cancelScheduledValues(this.ctx.currentTime); this.master.gain.setValueAtTime(0.16, this.ctx.currentTime);
+    const e = 60 / this.BPM / 2; this.next = this.ctx.currentTime + 0.05; this.step = 0;
+    this.timer = setInterval(() => { // programma le note con un po' di anticipo, così il ritmo resta regolare
+      while (this.next < this.ctx.currentTime + 0.12) {
+        const i = this.step % 32, n = this.LEAD[i];
+        if (n) this.tone('square', this.hz(n), this.next, e * 0.9, 0.5);
+        if (i % 2 === 0) this.tone('triangle', this.hz(this.BASS[(i >> 1) % 16]), this.next, e * 1.8, 0.9);
+        if (i % 2 === 1) this.hat(this.next);
+        this.next += e; this.step++;
+      }
+    }, 25);
+  },
+  stop(fade) {
+    if (!this.on) return; this.on = false; clearInterval(this.timer);
+    const t = this.ctx.currentTime; this.master.gain.setValueAtTime(this.master.gain.value, t); this.master.gain.linearRampToValueAtTime(0.0001, t + (fade || 0.05));
+  },
+  jingle() { // START: arpeggio in salita e accordo finale
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    this.stop(0.05); const t = this.ctx.currentTime + 0.08; this.master.gain.cancelScheduledValues(t - 0.02); this.master.gain.setValueAtTime(0.16, t - 0.01);
+    [3, 7, 10, 15].forEach((n, i) => this.tone('square', this.hz(n), t + i * 0.16, 0.12, 0.5));
+    [15, 19, 22].forEach(n => this.tone('square', this.hz(n), t + 0.3, 0.45, 0.32)); this.tone('triangle', this.hz(-9), t + 0.3, 0.5, 0.9);
+    this.master.gain.setValueAtTime(0.16, t + 0.8); this.master.gain.linearRampToValueAtTime(0.0001, t + 1.1);
+  }
+};
+function musicPref() { try { return localStorage.getItem('fm-musica') === '1'; } catch (e) { return false; } }
+function setMusicPref(v) { try { localStorage.setItem('fm-musica', v ? '1' : '0'); } catch (e) {} }
+
 /* Un ciliegio che attraversa le stagioni mentre la barra si riempie:
    inverno (rami spogli) → fioritura rosa → foglie verde chiaro → verde scuro → autunno rosso a 100% */
 const TREE_BR = [[23,31,14,20],[14,20,10,15],[14,20,18,14],[25,30,34,19],[34,19,38,14],[34,19,30,13],[24,30,24,13],[24,13,21,9],[24,13,28,9],[23,35,17,28],[25,34,31,28]];

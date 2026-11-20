@@ -169,6 +169,8 @@ a{color:var(--water)}
 #lskip.ready{background:var(--lime);animation:blink .5s steps(1) infinite}
 #lskip.press{transform:translate(3px,3px);box-shadow:0 0 0 var(--leaf1);background:var(--sun);animation:none}
 @keyframes blink{50%{opacity:.35}}
+#lmusic{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;font-size:9px}
+#lmusic.on{background:var(--lime)}
 
 @media (max-width:760px){
   #bar h1{font-size:11px}#bar h1 small{font-size:8px;margin-left:10px;vertical-align:middle}
@@ -231,6 +233,7 @@ a{color:var(--water)}
   <div id="lpct">0%</div>
   <div id="lmsg">Preparo il terreno&hellip;</div>
   <button class="btn" id="lskip" disabled>Start</button>
+  <button class="btn sm" id="lmusic" aria-pressed="false">&#9834; Musica</button>
 </div>
 
 <header id="bar">
@@ -585,6 +588,58 @@ function sprIcon(c, px, cls) { return L.divIcon({className: 'spr-ico' + (cls ? '
 /* ---------------------------------------------------------------------
    Schermata di caricamento: una pianta che cresce col caricamento reale
    --------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------
+   Musica a 8 bit, originale e generata dal codice (Web Audio): onda quadra per la melodia,
+   triangolare per il basso, rumore per il ritmo. Parte solo dopo un tocco (regola dei browser).
+   --------------------------------------------------------------------- */
+const Chip = {
+  ctx: null, on: false, timer: 0, step: 0, next: 0, master: null, noise: null,
+  BPM: 132,
+  // melodia (8 note per battuta, 4 battute) e basso; 0 = pausa. Frequenze in semitoni da La4 = 440 Hz
+  LEAD: [ 7,10,12,10, 7, 5, 3, 5,   7, 0, 7,10,12, 0,15, 0,  14,12,10, 7, 5, 7,10, 0,  12, 0,10, 7, 5, 3, 5, 0],
+  BASS: [-21,-21,-9,-21, -24,-24,-12,-24, -28,-28,-16,-28, -26,-26,-14,-26],
+  hz(n) { return 440 * Math.pow(2, n / 12); },
+  init() {
+    if (this.ctx) return true;
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
+    this.ctx = new AC(); this.master = this.ctx.createGain(); this.master.gain.value = 0.16; this.master.connect(this.ctx.destination);
+    const b = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.05, this.ctx.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; this.noise = b; return true;
+  },
+  tone(type, f, t, len, vol) {
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + len); o.connect(g); g.connect(this.master); o.start(t); o.stop(t + len + 0.02);
+  },
+  hat(t) { const s = this.ctx.createBufferSource(), g = this.ctx.createGain(), f = this.ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 6000; s.buffer = this.noise; g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04); s.connect(f); f.connect(g); g.connect(this.master); s.start(t); },
+  start() {
+    if (!this.init()) return; if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.on) return; this.on = true; this.master.gain.cancelScheduledValues(this.ctx.currentTime); this.master.gain.setValueAtTime(0.16, this.ctx.currentTime);
+    const e = 60 / this.BPM / 2; this.next = this.ctx.currentTime + 0.05; this.step = 0;
+    this.timer = setInterval(() => { // programma le note con un po' di anticipo, così il ritmo resta regolare
+      while (this.next < this.ctx.currentTime + 0.12) {
+        const i = this.step % 32, n = this.LEAD[i];
+        if (n) this.tone('square', this.hz(n), this.next, e * 0.9, 0.5);
+        if (i % 2 === 0) this.tone('triangle', this.hz(this.BASS[(i >> 1) % 16]), this.next, e * 1.8, 0.9);
+        if (i % 2 === 1) this.hat(this.next);
+        this.next += e; this.step++;
+      }
+    }, 25);
+  },
+  stop(fade) {
+    if (!this.on) return; this.on = false; clearInterval(this.timer);
+    const t = this.ctx.currentTime; this.master.gain.setValueAtTime(this.master.gain.value, t); this.master.gain.linearRampToValueAtTime(0.0001, t + (fade || 0.05));
+  },
+  jingle() { // START: arpeggio in salita e accordo finale
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    this.stop(0.05); const t = this.ctx.currentTime + 0.08; this.master.gain.cancelScheduledValues(t - 0.02); this.master.gain.setValueAtTime(0.16, t - 0.01);
+    [3, 7, 10, 15].forEach((n, i) => this.tone('square', this.hz(n), t + i * 0.16, 0.12, 0.5));
+    [15, 19, 22].forEach(n => this.tone('square', this.hz(n), t + 0.3, 0.45, 0.32)); this.tone('triangle', this.hz(-9), t + 0.3, 0.5, 0.9);
+    this.master.gain.setValueAtTime(0.16, t + 0.8); this.master.gain.linearRampToValueAtTime(0.0001, t + 1.1);
+  }
+};
+function musicPref() { try { return localStorage.getItem('fm-musica') === '1'; } catch (e) { return false; } }
+function setMusicPref(v) { try { localStorage.setItem('fm-musica', v ? '1' : '0'); } catch (e) {} }
+
 /* Un ciliegio che attraversa le stagioni mentre la barra si riempie:
    inverno (rami spogli) → fioritura rosa → foglie verde chiaro → verde scuro → autunno rosso a 100% */
 const TREE_BR = [[23,31,14,20],[14,20,10,15],[14,20,18,14],[25,30,34,19],[34,19,38,14],[34,19,30,13],[24,30,24,13],[24,13,21,9],[24,13,28,9],[23,35,17,28],[25,34,31,28]];
@@ -736,7 +791,11 @@ const Loader = {
     this.msg('Preparo il terreno…', true);
     const bar = $('#lbar'); for (let i = 0; i < 16; i++) bar.appendChild(document.createElement('i'));
     this.g = $('#plant').getContext('2d');
-    $('#lskip').onclick = () => this.close(true);
+    $('#lskip').onclick = () => { Chip.jingle(); this.close(true); };
+    // musica: il pulsante la accende e spegne; se l'utente l'aveva scelta, riparte al primo tocco sulla schermata
+    const mb = $('#lmusic'), mset = on => { mb.classList.toggle('on', on); mb.setAttribute('aria-pressed', on); };
+    mb.onclick = e => { e.stopPropagation(); const on = !Chip.on; setMusicPref(on); mset(on); if (on) Chip.start(); else Chip.stop(0.2); };
+    if (musicPref()) { mset(true); $('#loader').addEventListener('pointerdown', () => { if (musicPref() && !Chip.on && !this.closed) Chip.start(); }, {once: true}); }
     setTimeout(() => { $('#lskip').disabled = false; }, 9000); // chi non vuole aspettare può entrare comunque
     const loop = t => {
       if (this.closed && this.shown >= 1 && performance.now() - this.tClose > 900) return;
@@ -747,7 +806,7 @@ const Loader = {
       // i messaggi compaiono quando la barra arriva al punto in cui sono stati scritti, non prima
       while (this.queue.length && this.queue[0].at <= this.shown + 0.001) { const el = $('#lmsg'); if (el) el.textContent = this.queue.shift().m; }
       drawPlant(this.g, this.shown, t);
-      const pct = Math.round(this.shown * 100); $('#lpct').textContent = pct + '%';
+      const pct = Math.round(this.shown * 100); if (pct !== this.lastPct) { this.lastPct = pct; $('#lpct').innerHTML = String(pct).replace(/8/g, '<span class="p8"></span>') + '%'; } // l'8 del font sembra una &
       const cells = $('#lbar').children; for (let i = 0; i < cells.length; i++) cells[i].className = (i < Math.round(this.shown * cells.length)) ? 'on' : '';
       if (this.ready && this.shown >= 0.999 && !this.closed && !this.pressing) this.autoStart();
       requestAnimationFrame(loop);
@@ -760,10 +819,11 @@ const Loader = {
   // a caricamento completo START lampeggia, poi si preme da solo
   autoStart() {
     this.pressing = true; const b = $('#lskip'); b.disabled = false; b.classList.add('ready');
-    setTimeout(() => { if (this.closed) return; b.classList.remove('ready'); b.classList.add('press'); setTimeout(() => this.close(true), 260); }, 900);
+    setTimeout(() => { if (this.closed) return; b.classList.remove('ready'); b.classList.add('press'); Chip.jingle(); setTimeout(() => this.close(true), 260); }, 900);
   },
   close(force) {
     if (this.closed) return; this.closed = true; this.tClose = performance.now(); if (force) this.shown = 1;
+    if (Chip.on) Chip.stop(0.8); // la musica sfuma quando si apre la mappa
     setTimeout(() => { $('#loader').classList.add('bye'); if (window.map) map.invalidateSize(); }, force ? 0 : 750);
   }
 };
