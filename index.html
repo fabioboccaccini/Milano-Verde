@@ -191,8 +191,9 @@ a{color:var(--water)}
 
 /* posizione dell'utente */
 .me-ico{background:none;border:0}
-.me-ico i{display:block;width:14px;height:14px;background:var(--water);border:3px solid var(--white);outline:3px solid var(--ink);animation:me 1s steps(2) infinite}
-@keyframes me{50%{background:var(--sky)}}
+.me-ico img{display:block;width:32px;height:32px;transition:transform .3s steps(4);filter:drop-shadow(2px 2px 0 rgba(27,28,46,.45))}
+.me-ico .me-b{animation:me 1.2s steps(1) infinite}
+@keyframes me{50%{transform:translateY(-2px)}}
 #bar .btn.sm{white-space:nowrap}
 @media (max-width:760px){#bar{gap:6px;padding:8px 6px}#bar .btn.sm{padding:8px 6px}}
 /* telefono: barra simmetrica, due pulsanti quadrati con la sola icona e titolo centrato */
@@ -533,6 +534,10 @@ function buildSprites() {
     '................','.....kk..kk.....','....kppkkppk....','...kppppppppk...','...kppyyyyppk...','....kpyooypk....','...kppyyyyppk...',
     '...kppppppppk...','....kppkkppk....','.....kkggkk.....','..kk...gg.......','.kllk..gg..kk...','..kllk.gg.kllk..','...kkkgggkllk...','.....kggggkk....','......kkkk......'],
     {k:K,p:PAL.pink,y:PAL.sun,o:PAL.orange,g:PAL.leaf2,l:PAL.leaf3});
+  // l'utente: personaggio visto dall'alto con il cappellino, rivolto verso nord (visiera in alto)
+  SPR.me = fromMap([
+    '......kkkk......','.....kvvvvk.....','....kvvvvvvk....','....kwwwwwwk....','...kcclllccck...','..kccllllcccck..','..kcllllccccck..','..kcclcbbcccck..','..kcccccccccck..','..kcccccccccck..','..khcccccccchk..','kssshhcccchhsssk','kssssshhhhsssssk','kssssssssssssssk','.kssssssssssssk.','..kkkkkkkkkkkk..'],
+    {k:K,v:'#8a2530',w:'#55141d',c:PAL.red,l:'#e8726f',b:PAL.sun,h:PAL.brown,s:PAL.water});
   // cartello stradale per il livello dei nomi
   SPR.nomi = fromMap([
     '................','................','.kkkkkkkkkkkkkk.','.kbbbbbbbbbbbbk.','.kbbbwwbbwbbbbk.','.kbbwbbwbwbbbbk.','.kbbwbbwbwbbbbk.',
@@ -1687,7 +1692,7 @@ let meMarker = null, meCircle = null, _msgT = 0;
 function hudMsg(t) { let el = $('#hudmsg'); if (!el) { el = document.createElement('div'); el.id = 'hudmsg'; el.className = 'hudbox'; $('#hud').prepend(el); } el.textContent = t; clearTimeout(_msgT); _msgT = setTimeout(() => el.remove(), t.length > 60 ? 12000 : 6000); }
 /* Posizione: inseguimento continuo con watchPosition. La prima posizione è spesso una stima da Wi-Fi e celle;
    quelle successive arrivano dal GPS e il cerchio di incertezza si stringe. La mappa segue finché non la si trascina. */
-let meWatch = null, meFollow = false, meFirst = true, meBest = Infinity, meNil = -1, meWarnT = 0, meStopT = 0;
+let meWatch = null, meFollow = false, meFirst = true, meBest = Infinity, meNil = -1, meWarnT = 0, meStopT = 0, meAuto = false;
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 function meUnfollow() { meFollow = false; }
 function stopLocate(msg) {
@@ -1696,12 +1701,15 @@ function stopLocate(msg) {
   clearTimeout(meWarnT); clearTimeout(meStopT); map.off('dragstart', meUnfollow); $('#bgeo').classList.remove('on');
   if (msg) hudMsg(msg);
 }
-function locateMe() {
-  if (!navigator.geolocation) { hudMsg('QUESTO BROWSER NON OFFRE LA POSIZIONE'); return; }
+/* auto = true all'apertura della pagina: zoom 15 (il proprio quartiere e quelli vicini), nessun messaggio se il
+   permesso è negato, e se si è fuori da Milano la mappa resta sulla città */
+function locateMe(auto) {
+  auto = auto === true;
+  if (!navigator.geolocation) { if (!auto) hudMsg('QUESTO BROWSER NON OFFRE LA POSIZIONE'); return; }
   if (meWatch !== null) { stopLocate('POSIZIONE SPENTA'); return; }
-  $('#bgeo').classList.add('on'); if (isMobile()) togglePanel(false);
-  meFollow = true; meFirst = true; meBest = Infinity; meNil = -1; map.on('dragstart', meUnfollow);
-  hudMsg('CERCO LA POSIZIONE…');
+  $('#bgeo').classList.add('on'); if (isMobile() && !auto) togglePanel(false);
+  meAuto = auto; meFollow = true; meFirst = true; meBest = Infinity; meNil = -1; map.on('dragstart', meUnfollow);
+  if (!auto) hudMsg('CERCO LA POSIZIONE…');
   meWatch = navigator.geolocation.watchPosition(onMyPos, onMyPosErr, {enableHighAccuracy: true, maximumAge: 0, timeout: 30000});
   // dopo qualche secondo una precisione oltre il chilometro vuol dire posizione approssimata per scelta del sistema
   meWarnT = setTimeout(() => { if (meWatch !== null && meBest > 1000 && isFinite(meBest)) hudMsg('POSIZIONE MOLTO APPROSSIMATA (±' + fmt(meBest / 1000, 1) + ' KM). ' +
@@ -1712,19 +1720,24 @@ function onMyPos(p) {
   const ll = [p.coords.latitude, p.coords.longitude], acc = p.coords.accuracy || 0, prev = meBest; meBest = Math.min(meBest, acc);
   if (!meMarker) {
     meCircle = L.circle(ll, {radius: acc, pane: 'vec', color: PAL.water, weight: 2, dashArray: '4 4', fillColor: PAL.sky, fillOpacity: 0.18, interactive: false}).addTo(map);
-    meMarker = L.marker(ll, {icon: L.divIcon({className: 'me-ico', iconSize: [20, 20], iconAnchor: [10, 10], html: '<i></i>'}), zIndexOffset: 1000, interactive: false}).addTo(map);
+    meMarker = L.marker(ll, {icon: L.divIcon({className: 'me-ico', iconSize: [32, 32], iconAnchor: [16, 16], html: '<div class="me-b"><img class="pix" width="32" height="32" alt="Tu sei qui" src="' + sprURL(SPR.me, 2) + '"></div>'}), zIndexOffset: 1000, interactive: false}).addTo(map);
   } else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(acc); }
+  // quando ci si muove il personaggio si gira verso la direzione di marcia
+  const hd = p.coords.heading, img = meMarker.getElement() && meMarker.getElement().querySelector('img');
+  if (img && hd != null && isFinite(hd) && (p.coords.speed == null || p.coords.speed > 0.4)) img.style.transform = 'rotate(' + Math.round(hd) + 'deg)';
   const nid = NIL.list.length ? nilOf(ll[1], ll[0]) : 0;
-  if (meFirst) { meFirst = false; map.setView(ll, Math.max(map.getZoom(), acc > 300 ? 15 : 17)); }
+  if (meFirst && meAuto && NIL.list.length && !nid) { stopLocate('SEI FUORI DAL COMUNE DI MILANO: LA MAPPA RESTA SULLA CITTÀ'); return; }
+  if (meFirst) { meFirst = false; map.setView(ll, meAuto ? 15 : Math.max(map.getZoom(), acc > 300 ? 15 : 17)); }
   else if (meFollow) {
     // quando il GPS si aggancia (da oltre 300 m a meno di 50) avvicino la vista una volta
-    if (prev > 300 && acc <= 50 && map.getZoom() < 17) map.setView(ll, 17); else map.panTo(ll, {animate: true, duration: 0.5});
+    if (!meAuto && prev > 300 && acc <= 50 && map.getZoom() < 17) map.setView(ll, 17); else map.panTo(ll, {animate: true, duration: 0.5});
   }
   if (nid !== meNil || (prev > 100 && acc <= 30)) { meNil = nid; hudMsg(nid ? 'SEI A ' + NIL.byId[nid].name.toUpperCase() + ' (±' + Math.round(acc) + ' M)' : 'SEI FUORI DAL COMUNE DI MILANO'); }
 }
 function onMyPosErr(e) {
-  if (e.code === 1) { stopLocate(e.code === 1 && isIOS() ? 'POSIZIONE NEGATA. SU IPHONE: IMPOSTAZIONI › PRIVACY E SICUREZZA › LOCALIZZAZIONE › SITI WEB DI SAFARI, POI RICARICA' : 'POSIZIONE NEGATA: CONSENTILA PER QUESTO SITO DALLE IMPOSTAZIONI DEL BROWSER, POI RICARICA'); return; }
-  if (!meMarker) hudMsg(e.code === 3 ? 'LA POSIZIONE TARDA AD ARRIVARE: SE SEI AL CHIUSO, PROVA VICINO A UNA FINESTRA' : 'POSIZIONE NON DISPONIBILE, RIPROVO…');
+  if (e.code === 1 && meAuto) { stopLocate(); return; } // all'apertura un rifiuto non merita un messaggio
+  if (e.code === 1) { stopLocate(isIOS() ? 'POSIZIONE NEGATA. SU IPHONE: IMPOSTAZIONI › PRIVACY E SICUREZZA › LOCALIZZAZIONE › SITI WEB DI SAFARI, POI RICARICA' : 'POSIZIONE NEGATA: CONSENTILA PER QUESTO SITO DALLE IMPOSTAZIONI DEL BROWSER, POI RICARICA'); return; }
+  if (!meMarker && !meAuto) hudMsg(e.code === 3 ? 'LA POSIZIONE TARDA AD ARRIVARE: SE SEI AL CHIUSO, PROVA VICINO A UNA FINESTRA' : 'POSIZIONE NON DISPONIBILE, RIPROVO…');
 }
 function showTab(t) { [...$('#tabs').children].forEach(b => b.classList.toggle('on', b.dataset.t === t)); document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 't-' + t)); if (t === 'incroci') refreshScatter(); togglePanel(true); }
 function togglePanel(open) { const p = $('#panel'), o = open == null ? p.classList.contains('closed') : open; p.classList.toggle('closed', !o); $('#bpanel').classList.toggle('on', o); }
@@ -1834,6 +1847,7 @@ async function main() {
   await Promise.all([pPop, pIdx, pParchi, pOrti, pGiard, pMon, treesSoon, faunaSoon]);
   clearTimeout(hard); Loader.msg('Pronto!'); Loader.finish();
   setMode('none');
+  setTimeout(() => locateMe(true), 900); // dopo la chiusura della schermata di caricamento
   fetchJSON(CFG.wiki, {timeout: 30000}).then(j => { WIKI = j.species || null; const n = WIKI ? Object.keys(WIKI).length : 0;
     src('wiki', 'Wikipedia, schede delle specie', n ? 'ok' : 'err', fmt(n) + ' schede con testo, link e foto (dove disponibile), raccolte il ' + esc(String(j.updated || '').split('-').reverse().join('/')) + '.'); })
     .catch(e => src('wiki', 'Wikipedia, schede delle specie', 'err', esc(e.message) + ': i popup degli alberi restano senza foto.'));

@@ -131,6 +131,10 @@ function buildSprites() {
     '................','.....kk..kk.....','....kppkkppk....','...kppppppppk...','...kppyyyyppk...','....kpyooypk....','...kppyyyyppk...',
     '...kppppppppk...','....kppkkppk....','.....kkggkk.....','..kk...gg.......','.kllk..gg..kk...','..kllk.gg.kllk..','...kkkgggkllk...','.....kggggkk....','......kkkk......'],
     {k:K,p:PAL.pink,y:PAL.sun,o:PAL.orange,g:PAL.leaf2,l:PAL.leaf3});
+  // l'utente: personaggio visto dall'alto con il cappellino, rivolto verso nord (visiera in alto)
+  SPR.me = fromMap([
+    '......kkkk......','.....kvvvvk.....','....kvvvvvvk....','....kwwwwwwk....','...kcclllccck...','..kccllllcccck..','..kcllllccccck..','..kcclcbbcccck..','..kcccccccccck..','..kcccccccccck..','..khcccccccchk..','kssshhcccchhsssk','kssssshhhhsssssk','kssssssssssssssk','.kssssssssssssk.','..kkkkkkkkkkkk..'],
+    {k:K,v:'#8a2530',w:'#55141d',c:PAL.red,l:'#e8726f',b:PAL.sun,h:PAL.brown,s:PAL.water});
   // cartello stradale per il livello dei nomi
   SPR.nomi = fromMap([
     '................','................','.kkkkkkkkkkkkkk.','.kbbbbbbbbbbbbk.','.kbbbwwbbwbbbbk.','.kbbwbbwbwbbbbk.','.kbbwbbwbwbbbbk.',

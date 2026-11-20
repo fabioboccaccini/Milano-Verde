@@ -179,8 +179,9 @@ a{color:var(--water)}
 
 /* posizione dell'utente */
 .me-ico{background:none;border:0}
-.me-ico i{display:block;width:14px;height:14px;background:var(--water);border:3px solid var(--white);outline:3px solid var(--ink);animation:me 1s steps(2) infinite}
-@keyframes me{50%{background:var(--sky)}}
+.me-ico img{display:block;width:32px;height:32px;transition:transform .3s steps(4);filter:drop-shadow(2px 2px 0 rgba(27,28,46,.45))}
+.me-ico .me-b{animation:me 1.2s steps(1) infinite}
+@keyframes me{50%{transform:translateY(-2px)}}
 #bar .btn.sm{white-space:nowrap}
 @media (max-width:760px){#bar{gap:6px;padding:8px 6px}#bar .btn.sm{padding:8px 6px}}
 /* telefono: barra simmetrica, due pulsanti quadrati con la sola icona e titolo centrato */
