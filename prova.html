@@ -191,6 +191,18 @@ html.v2 #map{position:fixed;top:0;left:0;right:0;height:100lvh;z-index:0}
 html.v3 #map{position:fixed;top:0;left:0;right:0;height:calc(100lvh + 140px);z-index:0}
 html.v2 #bar,html.v3 #bar{position:relative;z-index:1200}
 html.v2 #panel,html.v3 #panel,html.v2 #hud,html.v3 #hud,html.v2 #legend,html.v3 #legend{position:fixed}
+
+/* v4 e v5: la mappa sporge di 120px sotto il fondo della pagina (Safari la disegna sotto il vetro);
+   tutto ciò che sta in basso viene rialzato degli stessi 120px. v4 blocca lo scorrimento della pagina, v5 no. */
+html.v4,html.v5{--sotto:120px}
+html.v4{overflow:hidden;overscroll-behavior:none}
+html.v5{overscroll-behavior:none}
+html.v4 body,html.v5 body{height:calc(100dvh + var(--sotto))}
+html.v4 .leaflet-bottom,html.v5 .leaflet-bottom{bottom:var(--sotto)}
+@media (max-width:760px){
+  html.v4 #hud,html.v5 #hud{bottom:calc(22px + var(--sotto))}
+  html.v4 #panel,html.v5 #panel{height:calc(64dvh + var(--sotto));padding-bottom:var(--sotto)}
+}
 #diag{position:fixed;left:8px;top:120px;z-index:5000;background:rgba(27,28,46,.9);color:#fff;font:12px/1.35 monospace;padding:8px 10px;white-space:pre;pointer-events:none}
 .probe{position:fixed;left:-9px;top:0;width:1px;visibility:hidden}
 </style>
