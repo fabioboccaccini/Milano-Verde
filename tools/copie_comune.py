@@ -1,6 +1,6 @@
-"""Rigenera le copie dei dati del Comune pubblicate nel sito: data/parchi.json e data/nil.geojson.
+"""Rigenera le copie dei dati del Comune pubblicate nel sito: parchi, quartieri (NIL), orti, giardini condivisi, monumentali.
 
-Il portale a volte serve i NIL senza CORS e manda i parchi non compressi (5 MB): la pagina usa queste
+Il portale a volte serve i file senza CORS (successo con NIL, giardini, monumentali) e manda i parchi non compressi (5 MB): la pagina usa queste
 copie. Qui, lato server, il CORS non conta. Se il portale non risponde, le copie restano come sono.
 
     python3 tools/copie_comune.py
@@ -13,6 +13,9 @@ CKAN = 'https://dati.comune.milano.it'
 FONTI = {  # id del dataset, formato, URL di ripiego (come CFG.pkg in a_tables.js)
     'parchi': ('ds89_infogeo_parchi_giardini_localizzazione_', '/dataset/8920bbea-fe1a-4061-8c6e-0746d95316c1/resource/7cba11e7-c236-49a7-aef4-4db6329eec5d/download/parchi.geojson'),
     'nil': ('ds964-nil-vigenti-pgt-2030', '/dataset/e8e765fc-d882-40b8-95d8-16ff3d39eb7c/resource/9c4e0776-56fc-4f3d-8a90-f4992a3be426/download/ds964_nil_wm.geojson'),
+    'orti': ('ds2186-infogeo-orti-urbani-localizzazione', '/dataset/8f85ebf9-73c7-45cc-a428-66d56b7b46a4/resource/3c052ee5-47d8-4902-b2be-85e053a4ed41/download/ds2186_aree_orti_comunali.geojson'),
+    'giardini': ('ds2187-infogeo-giardini-condivisi-localizzazione', '/dataset/57c2441d-69f1-42b9-a83d-41d8b98ddcbd/resource/df9a8989-51e2-4927-aef3-0487a80dc75e/download/ds2187_giardini_condivisi.geojson'),
+    'monum': ('ds2489-gli-alberi-monumentali-nel-comune-di-milano', '/dataset/4e405e99-895e-486c-be70-f8c759e47b31/resource/ea95b273-0a6d-444a-a1fb-b83eae24ce4d/download/alberi_monumentali_031123_final.geojson'),
 }
 
 
@@ -46,7 +49,7 @@ def arrotonda(c, dec):
 
 def main():
     esito = 0
-    for chiave, nome, dec, campi in (('parchi', 'parchi.json', 5, ['PARCO', 'AREA_MQ', 'PERIM_M', 'ZONA']), ('nil', 'nil.geojson', 6, None)):
+    for chiave, nome, dec, campi in (('parchi', 'parchi.json', 5, ['PARCO', 'AREA_MQ', 'PERIM_M', 'ZONA']), ('nil', 'nil.geojson', 6, None), ('orti', 'orti.geojson', 6, None), ('giardini', 'giardini.geojson', 6, None), ('monum', 'monumentali.geojson', 6, None)):
         try:
             gj, data = scarica(chiave)
             assert gj.get('features'), 'nessun elemento'
