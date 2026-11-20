@@ -897,7 +897,6 @@ function idb(mode, fn) {
   });
 }
 
-/* --- Fonte 1: portale Open Data del Comune (se e quando il dataset torna pubblico) --- */
 /* --- Fonte 2: copia del censimento del Comune pubblicata nel repository, accanto alla pagina --- */
 async function treesFromRepo() {
   const c = CFG.treesRepo; T.expected = c.n;
@@ -907,6 +906,7 @@ async function treesFromRepo() {
   if (!T.n) throw new Error('file vuoto o non leggibile');
   return 'censimento del Comune di Milano aggiornato al ' + c.date + ' (copia del dataset ds2484, CC BY 4.0)';
 }
+/* --- Fonte 1: portale Open Data del Comune (se e quando il dataset torna pubblico) --- */
 async function treesFromCkan() {
   let pkg = null, lastErr;
   for (const id of CFG.treesPkg) { try { const r = await fetchJSON(CFG.ckan + '/api/3/action/package_show?id=' + id, {timeout: 15000}); if (r.success) { pkg = r.result; break; } } catch (e) { lastErr = e; } }
@@ -918,7 +918,7 @@ async function treesFromCkan() {
   await ingestBlob(await r.blob(), pick.url, 'Alberi dal portale');
   return 'Open Data Comune di Milano, ' + esc(pkg.title) + ' (CC BY 4.0)';
 }
-/* --- Fonte 2: livello "Alberi" del geoportale ArcGIS. NON TESTATO: il server non era raggiungibile --- */
+/* --- Fonte 4: livello "Alberi" del geoportale ArcGIS. NON TESTATO: il server non era raggiungibile --- */
 async function treesFromArcgis() {
   const base = CFG.arcgisTrees, meta = await fetchJSON(base + '?f=json', {timeout: 12000});
   if (meta.error || !meta.fields) throw new Error('servizio non disponibile');
@@ -941,7 +941,7 @@ async function treesFromArcgis() {
   await Promise.all([worker(), worker(), worker(), worker()]);
   return 'Geoportale del Comune di Milano, livello "Alberi" del Patrimonio del Verde';
 }
-/* --- Fonte 3: OpenStreetMap via Overpass. Copertura volontaria e parziale. NON TESTATO da qui --- */
+/* --- Fonte 5: OpenStreetMap via Overpass. Copertura volontaria e parziale. NON TESTATO da qui --- */
 async function treesFromOSM() {
   const b = NIL.bbox || CFG.bbox, q = '[out:json][timeout:120];node["natural"="tree"](' + [b.s, b.w, b.n, b.e].map(v => v.toFixed(4)).join(',') + ');out body qt;';
   let js, err;
@@ -984,7 +984,7 @@ async function loadTrees() {
   src('alberi', 'Alberi', 'err', 'Nessuna fonte ha risposto. Puoi caricare un file locale (CSV, ZIP o GeoJSON) dal pannello Livelli.<br>' + fails.join('<br>'));
   _firstTrees();
 }
-/* --- Fonte di ripiego: file ufficiale caricato a mano in una visita precedente --- */
+/* --- Fonte 3: file caricato a mano in una visita precedente --- */
 async function treesFromCache() {
   const rec = await idb('readonly', st => st.get('alberi'));
   if (!rec || !rec.blob) throw new Error('nessun file salvato in questo browser');
@@ -998,7 +998,7 @@ async function loadTreesFile(file) {
     await ingestBlob(file, file.name, 'Alberi dal file');
     if (!T.n) throw new Error('nessun punto valido nel file');
     T.source = 'file'; T.sourceNote = 'file locale ' + esc(file.name); T.done = true; treesChanged(true);
-    let kept = ''; try { await idb('readwrite', st => st.put({name: file.name, blob: file}, 'alberi')); kept = ' Conservato in questo browser per le prossime visite.'; } catch (e) {}
+    let kept = ''; try { await idb('readwrite', st => st.put({name: file.name, blob: file}, 'alberi')); kept = ' Conservato in questo browser come riserva: alle prossime visite si userà solo se il censimento del sito non risponde.'; } catch (e) {}
     src('alberi', 'Alberi', 'ok', fmt(T.n) + ' alberi dal file locale <b>' + esc(file.name) + '</b>.' + kept);
   } catch (e) { src('alberi', 'Alberi', 'err', 'File non leggibile: ' + esc(e.message)); T.done = true; treesChanged(true); }
   hudTrees(null);
@@ -1541,7 +1541,7 @@ function applyTreeState() { recomputeStates(); if (treeLayer) treeLayer.redraw()
 function treesChanged(final) {
   const now = performance.now();
   if (final || now - _tcT > 700) { _tcT = now; spMeta.length = 0; recomputeStates(); if (treeLayer) treeLayer.redraw(); }
-  if (final) { buildTreeFilters(); renderTreeNote(); renderModeList(); }
+  if (final) { buildTreeFilters(); renderTreeNote(); renderModeList(); updateHud(); }
   statsChanged(final);
 }
 function statsChanged(final) {
@@ -1593,7 +1593,7 @@ function buildPanel() {
   $('#c-orti').onchange = e => setLayer('orti', e.target.checked); $('#c-giardini').onchange = e => setLayer('giardini', e.target.checked);
   $('#fgen').onchange = e => { ST.fGenus = e.target.value; ST.fSpecies = ''; fillSpecies(); applyTreeState(); };
   $('#fspe').onchange = e => { ST.fSpecies = e.target.value; applyTreeState(); };
-  $('#treefile').onchange = e => { if (e.target.files[0]) loadTreesFile(e.target.files[0]); };
+  $('#treefile').onchange = e => { const f = e.target.files[0]; if (!f) return; if (!T.done) { e.target.value = ''; hudMsg('ATTENDI LA FINE DEL CARICAMENTO DEGLI ALBERI, POI RIPROVA'); return; } loadTreesFile(f); };
   $('#moreinat').onclick = async () => { const b = $('#moreinat'); b.disabled = true; b.textContent = 'Carico…'; await loadInat(5); b.disabled = false; b.textContent = 'Carica altre 1.000 da iNaturalist'; };
   $('#ebgo').onclick = () => { const k = $('#ebkey').value.trim(); if (k) { src('ebird', 'eBird', 'wait', 'Richiesta in corso…'); loadEbird(k); } };
   try { const k = localStorage.getItem('mv-ebird'); if (k) $('#ebkey').value = k; } catch (e) {}
@@ -1679,7 +1679,7 @@ function renderStatic() {
     '<li><b>Leaflet</b> 1.9.4 (BSD-2) per la mappa; font Press Start 2P (SIL OFL) per i titoli.</li>' +
     '<li>Sprite e grafica pixel art: originali, generati dal codice della pagina.</li></ul>';
   $('#method').innerHTML = '<ul style="padding-left:18px;margin:6px 0;font-size:13px">' +
-    '<li>Nessun dato è incorporato nella pagina: tutto arriva dalle fonti all\'apertura. Fanno eccezione le tabelle di fioritura, potenziale allergenico e nomi comuni, scritte a mano e da considerare approssimazioni.</li>' +
+    '<li>I dati arrivano dalle fonti all\'apertura della pagina. Fanno eccezione il censimento degli alberi, di cui il sito pubblica una copia perché il Comune l\'ha ritirato dal portale, e le tabelle di fioritura, potenziale allergenico e nomi comuni, scritte a mano e da considerare approssimazioni.</li>' +
     '<li>Gli alberi sono solo quelli gestiti dal Comune. Il verde privato e le aree boscate non compaiono, e pesano molto in alcuni quartieri.</li>' +
     '<li>I valori per abitante escludono di norma i NIL con meno di 1.000 residenti, dove un parco e poche case producono numeri fuori scala.</li>' +
     '<li>Le superfici a parco vengono dal solo dataset "parchi e giardini"; ogni area è assegnata al NIL del suo centro.</li>' +

@@ -336,7 +336,6 @@ function idb(mode, fn) {
   });
 }
 
-/* --- Fonte 1: portale Open Data del Comune (se e quando il dataset torna pubblico) --- */
 /* --- Fonte 2: copia del censimento del Comune pubblicata nel repository, accanto alla pagina --- */
 async function treesFromRepo() {
   const c = CFG.treesRepo; T.expected = c.n;
@@ -346,6 +345,7 @@ async function treesFromRepo() {
   if (!T.n) throw new Error('file vuoto o non leggibile');
   return 'censimento del Comune di Milano aggiornato al ' + c.date + ' (copia del dataset ds2484, CC BY 4.0)';
 }
+/* --- Fonte 1: portale Open Data del Comune (se e quando il dataset torna pubblico) --- */
 async function treesFromCkan() {
   let pkg = null, lastErr;
   for (const id of CFG.treesPkg) { try { const r = await fetchJSON(CFG.ckan + '/api/3/action/package_show?id=' + id, {timeout: 15000}); if (r.success) { pkg = r.result; break; } } catch (e) { lastErr = e; } }
@@ -357,7 +357,7 @@ async function treesFromCkan() {
   await ingestBlob(await r.blob(), pick.url, 'Alberi dal portale');
   return 'Open Data Comune di Milano, ' + esc(pkg.title) + ' (CC BY 4.0)';
 }
-/* --- Fonte 2: livello "Alberi" del geoportale ArcGIS. NON TESTATO: il server non era raggiungibile --- */
+/* --- Fonte 4: livello "Alberi" del geoportale ArcGIS. NON TESTATO: il server non era raggiungibile --- */
 async function treesFromArcgis() {
   const base = CFG.arcgisTrees, meta = await fetchJSON(base + '?f=json', {timeout: 12000});
   if (meta.error || !meta.fields) throw new Error('servizio non disponibile');
@@ -380,7 +380,7 @@ async function treesFromArcgis() {
   await Promise.all([worker(), worker(), worker(), worker()]);
   return 'Geoportale del Comune di Milano, livello "Alberi" del Patrimonio del Verde';
 }
-/* --- Fonte 3: OpenStreetMap via Overpass. Copertura volontaria e parziale. NON TESTATO da qui --- */
+/* --- Fonte 5: OpenStreetMap via Overpass. Copertura volontaria e parziale. NON TESTATO da qui --- */
 async function treesFromOSM() {
   const b = NIL.bbox || CFG.bbox, q = '[out:json][timeout:120];node["natural"="tree"](' + [b.s, b.w, b.n, b.e].map(v => v.toFixed(4)).join(',') + ');out body qt;';
   let js, err;
@@ -423,7 +423,7 @@ async function loadTrees() {
   src('alberi', 'Alberi', 'err', 'Nessuna fonte ha risposto. Puoi caricare un file locale (CSV, ZIP o GeoJSON) dal pannello Livelli.<br>' + fails.join('<br>'));
   _firstTrees();
 }
-/* --- Fonte di ripiego: file ufficiale caricato a mano in una visita precedente --- */
+/* --- Fonte 3: file caricato a mano in una visita precedente --- */
 async function treesFromCache() {
   const rec = await idb('readonly', st => st.get('alberi'));
   if (!rec || !rec.blob) throw new Error('nessun file salvato in questo browser');
@@ -437,7 +437,7 @@ async function loadTreesFile(file) {
     await ingestBlob(file, file.name, 'Alberi dal file');
     if (!T.n) throw new Error('nessun punto valido nel file');
     T.source = 'file'; T.sourceNote = 'file locale ' + esc(file.name); T.done = true; treesChanged(true);
-    let kept = ''; try { await idb('readwrite', st => st.put({name: file.name, blob: file}, 'alberi')); kept = ' Conservato in questo browser per le prossime visite.'; } catch (e) {}
+    let kept = ''; try { await idb('readwrite', st => st.put({name: file.name, blob: file}, 'alberi')); kept = ' Conservato in questo browser come riserva: alle prossime visite si userà solo se il censimento del sito non risponde.'; } catch (e) {}
     src('alberi', 'Alberi', 'ok', fmt(T.n) + ' alberi dal file locale <b>' + esc(file.name) + '</b>.' + kept);
   } catch (e) { src('alberi', 'Alberi', 'err', 'File non leggibile: ' + esc(e.message)); T.done = true; treesChanged(true); }
   hudTrees(null);

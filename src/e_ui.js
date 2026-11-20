@@ -167,7 +167,7 @@ function applyTreeState() { recomputeStates(); if (treeLayer) treeLayer.redraw()
 function treesChanged(final) {
   const now = performance.now();
   if (final || now - _tcT > 700) { _tcT = now; spMeta.length = 0; recomputeStates(); if (treeLayer) treeLayer.redraw(); }
-  if (final) { buildTreeFilters(); renderTreeNote(); renderModeList(); }
+  if (final) { buildTreeFilters(); renderTreeNote(); renderModeList(); updateHud(); }
   statsChanged(final);
 }
 function statsChanged(final) {
@@ -219,7 +219,7 @@ function buildPanel() {
   $('#c-orti').onchange = e => setLayer('orti', e.target.checked); $('#c-giardini').onchange = e => setLayer('giardini', e.target.checked);
   $('#fgen').onchange = e => { ST.fGenus = e.target.value; ST.fSpecies = ''; fillSpecies(); applyTreeState(); };
   $('#fspe').onchange = e => { ST.fSpecies = e.target.value; applyTreeState(); };
-  $('#treefile').onchange = e => { if (e.target.files[0]) loadTreesFile(e.target.files[0]); };
+  $('#treefile').onchange = e => { const f = e.target.files[0]; if (!f) return; if (!T.done) { e.target.value = ''; hudMsg('ATTENDI LA FINE DEL CARICAMENTO DEGLI ALBERI, POI RIPROVA'); return; } loadTreesFile(f); };
   $('#moreinat').onclick = async () => { const b = $('#moreinat'); b.disabled = true; b.textContent = 'Carico…'; await loadInat(5); b.disabled = false; b.textContent = 'Carica altre 1.000 da iNaturalist'; };
   $('#ebgo').onclick = () => { const k = $('#ebkey').value.trim(); if (k) { src('ebird', 'eBird', 'wait', 'Richiesta in corso…'); loadEbird(k); } };
   try { const k = localStorage.getItem('mv-ebird'); if (k) $('#ebkey').value = k; } catch (e) {}
@@ -305,7 +305,7 @@ function renderStatic() {
     '<li><b>Leaflet</b> 1.9.4 (BSD-2) per la mappa; font Press Start 2P (SIL OFL) per i titoli.</li>' +
     '<li>Sprite e grafica pixel art: originali, generati dal codice della pagina.</li></ul>';
   $('#method').innerHTML = '<ul style="padding-left:18px;margin:6px 0;font-size:13px">' +
-    '<li>Nessun dato è incorporato nella pagina: tutto arriva dalle fonti all\'apertura. Fanno eccezione le tabelle di fioritura, potenziale allergenico e nomi comuni, scritte a mano e da considerare approssimazioni.</li>' +
+    '<li>I dati arrivano dalle fonti all\'apertura della pagina. Fanno eccezione il censimento degli alberi, di cui il sito pubblica una copia perché il Comune l\'ha ritirato dal portale, e le tabelle di fioritura, potenziale allergenico e nomi comuni, scritte a mano e da considerare approssimazioni.</li>' +
     '<li>Gli alberi sono solo quelli gestiti dal Comune. Il verde privato e le aree boscate non compaiono, e pesano molto in alcuni quartieri.</li>' +
     '<li>I valori per abitante escludono di norma i NIL con meno di 1.000 residenti, dove un parco e poche case producono numeri fuori scala.</li>' +
     '<li>Le superfici a parco vengono dal solo dataset "parchi e giardini"; ogni area è assegnata al NIL del suo centro.</li>' +
