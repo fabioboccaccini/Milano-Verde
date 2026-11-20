@@ -340,7 +340,7 @@ const CFG = {
   wiki: 'data/wiki.json', // voce di Wikipedia, foto e licenza per specie: tools/wiki_species.py
   gbifNilCounts: 'data/gbif_nil.json', // conteggi per NIL precalcolati con tools/gbif_nil_counts.py
   gbifInat: '50c9509d-22c7-4a22-a47d-8c48425ef4a7', // dataset iNaturalist dentro GBIF: escluso per non contare due volte
-  ebird: 'https://api.ebird.org/v2/data/obs/geo/recent', // richiede chiave personale (campo nel pannello)
+  gbifFauna: 'data/gbif_fauna.json', // eBird (via GBIF, l'API di eBird vuole una chiave personale non condivisibile) e atlanti: tools/gbif_fauna.py
   cartoKey: 'cb1_5agz_1_f1a0c909ef4a187a638aa616', // chiave gratuita CARTO Basemaps, vincolata al dominio nashkaze.github.io dal pannello CARTO
   center: [45.4642, 9.19],
   bbox: {s: 45.386, w: 9.04, n: 45.536, e: 9.28},
@@ -1325,7 +1325,7 @@ function hitFauna(p, v) {
   return best;
 }
 function faunaPopup(o) {
-  const srcL = {inat: 'iNaturalist', gbif: 'GBIF', ebird: 'eBird'}[o.src], nil = NIL.byId[o.nil];
+  const srcL = {inat: 'iNaturalist', gbif: 'GBIF', ebird: 'eBird (via GBIF)'}[o.src], nil = NIL.byId[o.nil];
   return '<div class="pop"><h3>' + esc((o.name || o.sci || 'Animale').toUpperCase()) + '</h3>' + (o.sci ? '<div class="sci">' + esc(o.sci) + '</div>' : '') +
     (o.img ? '<img loading="lazy" src="' + esc(o.img) + '" alt="">' : '') +
     '<table><tr><td>Gruppo</td><td>' + GR_LBL[o.grp] + '</td></tr>' + (o.date ? '<tr><td>Data</td><td>' + esc(o.date) + '</td></tr>' : '') +
@@ -1362,24 +1362,20 @@ async function loadInat(pages) {
 }
 /* GBIF: prima chiedo quali dataset coprono Milano, poi leggo i maggiori escluso iNaturalist (già caricato) */
 function gbifGeo() { const b = bboxNow(); return 'decimalLatitude=' + b.s.toFixed(4) + ',' + b.n.toFixed(4) + '&decimalLongitude=' + b.w.toFixed(4) + ',' + b.e.toFixed(4) + '&kingdomKey=1&hasCoordinate=true&hasGeospatialIssue=false&occurrenceStatus=PRESENT'; }
+/* Punti di eBird e dei maggiori dataset GBIF: copia compatta in data/gbif_fauna.json (tools/gbif_fauna.py).
+   GBIF non comprime le risposte (300 record = 1,5 MB) e questi dataset si aggiornano solo periodicamente. */
 async function loadGbif() {
   try {
-    const fc = await fetchJSON(CFG.gbif + '?' + gbifGeo() + '&limit=0&facet=datasetKey&facetLimit=8', {timeout: 30000});
-    const fct = (fc.facets || [])[0], keys = fct ? fct.counts.filter(c => c.name !== CFG.gbifInat).slice(0, 3).map(c => c.name) : [];
-    const queries = keys.length ? keys.map(k => '&datasetKey=' + k) : [''];
-    for (const q of queries) {
-      const js = await fetchJSON(CFG.gbif + '?' + gbifGeo() + q + '&limit=300', {timeout: 45000});
-      for (const r of js.results || []) {
-        if (r.datasetKey === CFG.gbifInat || (r.coordinateUncertaintyInMeters || 0) > 1000) continue;
-        const cls = r.class || '';
-        addFauna({src: 'gbif', id: r.key, lon: +r.decimalLongitude, lat: +r.decimalLatitude, grp: GRUPPI[cls] || 'altro', name: cap(r.vernacularName || ''),
-          sci: r.species || r.scientificName || '', date: String(r.eventDate || '').slice(0, 10), img: '', url: 'https://www.gbif.org/occurrence/' + r.key,
-          who: r.recordedBy || '', ds: r.datasetName || '', lic: String(r.license || '').replace(/^https?:\/\/creativecommons\.org\/(licenses|publicdomain)\//, 'CC ').replace(/\/legalcode$/, '').replace(/\//g, ' ').toUpperCase()});
-      }
-      faunaChanged();
+    const j = await fetchJSON(CFG.gbifFauna, {timeout: 30000}), it = j.nomi_it || {}, ds = j.dataset || [], when = String(j.updated || '').split('-').reverse().join('/');
+    for (const r of j.rec || []) {
+      const [lon, lat, fonte, cls, nome, sci, data, key, who, lic, di] = r;
+      addFauna({src: fonte === 'ebird' ? 'ebird' : 'gbif', id: key, lon, lat, grp: GRUPPI[cls] || 'altro', name: cap(it[sci] || nome || ''), sci, date: data, img: '',
+        url: 'https://www.gbif.org/occurrence/' + key, who, ds: fonte === 'ebird' ? '' : (ds[di] || ''), lic});
     }
-    src('gbif', 'GBIF', 'ok', fmt(FA.counts.gbif) + ' occorrenze caricate dai maggiori dataset non iNaturalist (' + fmt(fc.count) + ' record animali nel riquadro di Milano, iNaturalist compreso).');
-  } catch (e) { src('gbif', 'GBIF', FA.counts.gbif ? 'part' : 'err', esc(e.message)); }
+    faunaChanged();
+    src('gbif', 'GBIF', 'ok', fmt(FA.counts.gbif) + ' occorrenze dagli atlanti degli uccelli e dai maggiori dataset su GBIF (' + fmt(j.totale_riquadro) + ' record animali nel riquadro di Milano). Raccolte il ' + esc(when) + '.');
+    src('ebird', 'eBird (via GBIF)', FA.counts.ebird ? 'ok' : 'err', fmt(FA.counts.ebird) + ' osservazioni di uccelli degli ultimi anni dal dataset eBird pubblicato su GBIF, raccolte il ' + esc(when) + '.');
+  } catch (e) { src('gbif', 'GBIF', 'err', esc(e.message)); src('ebird', 'eBird (via GBIF)', 'err', esc(e.message)); }
 }
 /* GBIF: conteggio delle occorrenze animali dentro ogni NIL. Calcolato in anticipo da tools/gbif_nil_counts.py
    e salvato in data/gbif_nil.json: chiederlo a GBIF a ogni visita voleva dire 88 richieste e un blocco (HTTP 429). */
@@ -1398,15 +1394,6 @@ async function loadGbifNilCounts() {
     src('gbifnil', 'GBIF, conteggi per quartiere', 'err', esc(e.message) + ': la statistica usa il campione di punti caricati.');
   }
   statsChanged();
-}
-async function loadEbird(key) {
-  try {
-    const js = await fetchJSON(CFG.ebird + '?lat=' + CFG.center[0] + '&lng=' + CFG.center[1] + '&dist=12&back=30&sppLocale=it&key=' + encodeURIComponent(key), {timeout: 30000});
-    for (const r of js) addFauna({src: 'ebird', id: r.subId + r.speciesCode, lon: +r.lng, lat: +r.lat, grp: 'uccelli', name: cap(r.comName), sci: r.sciName, date: String(r.obsDt || '').slice(0, 10), img: '',
-      url: 'https://ebird.org/checklist/' + r.subId, who: '', ds: r.locName || '', lic: 'termini eBird'});
-    faunaChanged(); src('ebird', 'eBird', 'ok', fmt(FA.counts.ebird) + ' osservazioni degli ultimi 30 giorni.');
-    try { localStorage.setItem('mv-ebird', key); } catch (e) {}
-  } catch (e) { src('ebird', 'eBird', 'err', 'Richiesta fallita: ' + esc(e.message) + '. Verifica la chiave.'); }
 }
 
 /* =====================================================================
@@ -1762,8 +1749,7 @@ function buildPanel() {
   layerRow('fauna', 'FAUNA URBANA', 'Segnalazioni geolocalizzate di cittadini e ricercatori.', SPR.uccelli,
     '<div class="warn">Le segnalazioni seguono la frequentazione delle persone, non la reale distribuzione degli animali.</div>' +
     Object.keys(GR_LBL).map(k => '<label class="chk"><input type="checkbox" data-grp="' + k + '" checked><canvas class="pix" width="16" height="16" style="width:20px;height:20px" data-ico="' + k + '"></canvas>' + GR_LBL[k] + '</label>').join('') +
-    '<p class="note" id="faunanum"></p><button class="btn sm" id="moreinat">Carica altre 1.000 da iNaturalist</button>' +
-    '<label style="margin-top:10px">Chiave eBird (facoltativa)<input type="password" id="ebkey" placeholder="incolla la tua chiave API" autocomplete="off"></label><button class="btn sm" id="ebgo">Carica eBird</button><p class="note">La chiave è gratuita su ebird.org/api/keygen e resta solo in questo browser.</p>');
+    '<p class="note" id="faunanum"></p><button class="btn sm" id="moreinat">Carica altre 1.000 da iNaturalist</button>');
   layerRow('nil', 'CONFINI DEI QUARTIERI', '88 Nuclei di Identità Locale (NIL), base delle statistiche.', SPR.nil);
   layerRow('nomi', 'NOMI DI VIE E QUARTIERI', 'Etichette della mappa di base.', SPR.nomi);
   // musica di sottofondo: spenta di default; se scelta, riparte al primo tocco (i browser vietano l'avvio automatico)
@@ -1778,8 +1764,6 @@ function buildPanel() {
   $('#fspe').onchange = e => { ST.fSpecies = e.target.value; applyTreeState(); };
   $('#treefile').onchange = e => { const f = e.target.files[0]; if (!f) return; if (!T.done) { e.target.value = ''; hudMsg('ATTENDI LA FINE DEL CARICAMENTO DEGLI ALBERI, POI RIPROVA'); return; } loadTreesFile(f); };
   $('#moreinat').onclick = async () => { const b = $('#moreinat'); b.disabled = true; b.textContent = 'Carico…'; await loadInat(5); b.disabled = false; b.textContent = 'Carica altre 1.000 da iNaturalist'; };
-  $('#ebgo').onclick = () => { const k = $('#ebkey').value.trim(); if (k) { src('ebird', 'eBird', 'wait', 'Richiesta in corso…'); loadEbird(k); } };
-  try { const k = localStorage.getItem('mv-ebird'); if (k) $('#ebkey').value = k; } catch (e) {}
   $('#btipo').onclick = loadTipologie;
   $('#kml').onchange = e => { if (e.target.files[0]) loadKml(e.target.files[0]); };
   // modalità
@@ -1901,7 +1885,7 @@ function renderStatic() {
     '<li><b>Comune di Milano, Open Data</b> (dati.comune.milano.it): confini dei NIL, residenti per NIL, parchi e giardini, orti urbani, giardini condivisi, alberi monumentali, aree verdi per tipologia, indici di calore e di verde per NIL (elaborazione progetto SPOTTED), censimento degli alberi (dataset ds2484 aggiornato al 31/03/2024, ritirato dal portale: il sito ne pubblica una copia ridotta alle colonne usate). Licenza <a href="https://creativecommons.org/licenses/by/4.0/deed.it" target="_blank" rel="noopener">CC BY 4.0</a>.</li>' +
     '<li><b>iNaturalist</b> (inaturalist.org): osservazioni e fotografie dei singoli utenti, ciascuna con la propria licenza indicata nella scheda. Uso tramite API pubblica.</li>' +
     '<li><b>GBIF</b> (gbif.org): occorrenze dai dataset aderenti, con licenze CC0, CC BY o CC BY-NC indicate per record. GBIF.org, Occurrence Search.</li>' +
-    '<li><b>eBird</b> (Cornell Lab of Ornithology): solo se inserisci una tua chiave, secondo i termini d\'uso dell\'API.</li>' +
+    '<li><b>eBird</b> (Cornell Lab of Ornithology): osservazioni di uccelli dal dataset eBird Observation Dataset pubblicato su GBIF, con la licenza indicata per record.</li>' +
     '<li><b>Wikipedia e Wikimedia Commons</b>: nei popup degli alberi, la prima frase della voce (testo CC BY-SA 4.0, con link alla voce) e una foto, con autore e licenza indicati sotto l\'immagine.</li>' +
     '<li><b>OpenStreetMap</b>: dati © OpenStreetMap contributors, licenza <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">ODbL</a>, per la mappa di base e, come ripiego, per gli alberi (Overpass API).</li>' +
     '<li><b>CARTO</b>: tasselli della mappa di base (Positron), © CARTO.</li>' +
@@ -1926,7 +1910,7 @@ async function main() {
   treeLayer = new SpriteLayer(drawTrees).addTo(map); faunaLayer = new SpriteLayer(drawFauna).addTo(map);
   src('nil', 'Confini dei NIL', 'wait', ''); src('pop', 'Residenti per NIL', 'wait', ''); src('parchi', 'Parchi e giardini', 'wait', ''); src('orti', 'Orti urbani', 'wait', ''); src('giardini', 'Giardini condivisi', 'wait', '');
   src('monum', 'Alberi monumentali', 'wait', ''); src('indici', 'Indici di calore e di verde', 'wait', ''); src('alberi', 'Alberi', 'wait', ''); src('inat', 'iNaturalist', 'wait', ''); src('gbif', 'GBIF', 'wait', '');
-  src('ebird', 'eBird', 'off', 'Richiede una chiave personale: inseriscila nel livello Fauna.');
+  src('ebird', 'eBird (via GBIF)', 'wait', '');
   src('pollini', 'Pollini (ARPA / ATS)', 'off', 'Nessuna fonte aperta e leggibile trovata: sezione predisposta.');
   src('landsat', 'Temperatura Landsat', 'off', 'Non integrabile in diretta senza un servizio intermedio: sezione predisposta.');
   const tk = {nil: Loader.task('Confini dei quartieri', 2), pop: Loader.task('Residenti', 1), parchi: Loader.task('Parchi e giardini', 2), orti: Loader.task('Orti urbani', 1), giardini: Loader.task('Giardini condivisi', 1),
@@ -1964,10 +1948,11 @@ async function main() {
   const pGiard = loadCkanGeo('giardini', 'Giardini condivisi').then(gj => { if (gj) { buildPlots('giardini', gj, PAL.pink, SPR.giardino, 'Giardino condiviso'); if (ST.on.giardini) LY.giardini.addTo(map); } tk.giardini.end('Giardini condivisi'); });
   const pMon = loadCkanGeo('monum', 'Alberi monumentali').then(gj => { if (gj) { buildMonum(gj); if (ST.on.monum) LY.monum.addTo(map); } tk.monum.end('Alberi monumentali'); });
   loadTrees(); firstTrees.then(() => tk.alberi.end(T.n ? 'Alberi piantati' : 'Alberi non disponibili'));
-  const pFauna = loadInat(1).then(() => { tk.fauna.end('Fauna avvistata'); loadGbif(); loadGbifNilCounts(); });
+  // la fauna (iNaturalist, poi GBIF ed eBird) si carica durante la schermata iniziale, con un tetto di attesa
+  const pFauna = loadInat(1).then(() => Promise.all([loadGbif(), loadGbifNilCounts()])).then(() => tk.fauna.end('Uccelli e insetti avvistati'));
 
   // la mappa si apre quando i livelli di base sono pronti; alberi e fauna possono proseguire dietro
-  const treesSoon = Promise.race([firstTrees, sleep(14000)]), faunaSoon = Promise.race([pFauna, sleep(9000)]);
+  const treesSoon = Promise.race([firstTrees, sleep(14000)]), faunaSoon = Promise.race([pFauna, sleep(12000)]);
   await Promise.all([pPop, pIdx, pParchi, pOrti, pGiard, pMon, treesSoon, faunaSoon]);
   clearTimeout(hard); Loader.finish();
   setMode('none');

@@ -170,7 +170,7 @@ function hitFauna(p, v) {
   return best;
 }
 function faunaPopup(o) {
-  const srcL = {inat: 'iNaturalist', gbif: 'GBIF', ebird: 'eBird'}[o.src], nil = NIL.byId[o.nil];
+  const srcL = {inat: 'iNaturalist', gbif: 'GBIF', ebird: 'eBird (via GBIF)'}[o.src], nil = NIL.byId[o.nil];
   return '<div class="pop"><h3>' + esc((o.name || o.sci || 'Animale').toUpperCase()) + '</h3>' + (o.sci ? '<div class="sci">' + esc(o.sci) + '</div>' : '') +
     (o.img ? '<img loading="lazy" src="' + esc(o.img) + '" alt="">' : '') +
     '<table><tr><td>Gruppo</td><td>' + GR_LBL[o.grp] + '</td></tr>' + (o.date ? '<tr><td>Data</td><td>' + esc(o.date) + '</td></tr>' : '') +
@@ -207,24 +207,20 @@ async function loadInat(pages) {
 }
 /* GBIF: prima chiedo quali dataset coprono Milano, poi leggo i maggiori escluso iNaturalist (già caricato) */
 function gbifGeo() { const b = bboxNow(); return 'decimalLatitude=' + b.s.toFixed(4) + ',' + b.n.toFixed(4) + '&decimalLongitude=' + b.w.toFixed(4) + ',' + b.e.toFixed(4) + '&kingdomKey=1&hasCoordinate=true&hasGeospatialIssue=false&occurrenceStatus=PRESENT'; }
+/* Punti di eBird e dei maggiori dataset GBIF: copia compatta in data/gbif_fauna.json (tools/gbif_fauna.py).
+   GBIF non comprime le risposte (300 record = 1,5 MB) e questi dataset si aggiornano solo periodicamente. */
 async function loadGbif() {
   try {
-    const fc = await fetchJSON(CFG.gbif + '?' + gbifGeo() + '&limit=0&facet=datasetKey&facetLimit=8', {timeout: 30000});
-    const fct = (fc.facets || [])[0], keys = fct ? fct.counts.filter(c => c.name !== CFG.gbifInat).slice(0, 3).map(c => c.name) : [];
-    const queries = keys.length ? keys.map(k => '&datasetKey=' + k) : [''];
-    for (const q of queries) {
-      const js = await fetchJSON(CFG.gbif + '?' + gbifGeo() + q + '&limit=300', {timeout: 45000});
-      for (const r of js.results || []) {
-        if (r.datasetKey === CFG.gbifInat || (r.coordinateUncertaintyInMeters || 0) > 1000) continue;
-        const cls = r.class || '';
-        addFauna({src: 'gbif', id: r.key, lon: +r.decimalLongitude, lat: +r.decimalLatitude, grp: GRUPPI[cls] || 'altro', name: cap(r.vernacularName || ''),
-          sci: r.species || r.scientificName || '', date: String(r.eventDate || '').slice(0, 10), img: '', url: 'https://www.gbif.org/occurrence/' + r.key,
-          who: r.recordedBy || '', ds: r.datasetName || '', lic: String(r.license || '').replace(/^https?:\/\/creativecommons\.org\/(licenses|publicdomain)\//, 'CC ').replace(/\/legalcode$/, '').replace(/\//g, ' ').toUpperCase()});
-      }
-      faunaChanged();
+    const j = await fetchJSON(CFG.gbifFauna, {timeout: 30000}), it = j.nomi_it || {}, ds = j.dataset || [], when = String(j.updated || '').split('-').reverse().join('/');
+    for (const r of j.rec || []) {
+      const [lon, lat, fonte, cls, nome, sci, data, key, who, lic, di] = r;
+      addFauna({src: fonte === 'ebird' ? 'ebird' : 'gbif', id: key, lon, lat, grp: GRUPPI[cls] || 'altro', name: cap(it[sci] || nome || ''), sci, date: data, img: '',
+        url: 'https://www.gbif.org/occurrence/' + key, who, ds: fonte === 'ebird' ? '' : (ds[di] || ''), lic});
     }
-    src('gbif', 'GBIF', 'ok', fmt(FA.counts.gbif) + ' occorrenze caricate dai maggiori dataset non iNaturalist (' + fmt(fc.count) + ' record animali nel riquadro di Milano, iNaturalist compreso).');
-  } catch (e) { src('gbif', 'GBIF', FA.counts.gbif ? 'part' : 'err', esc(e.message)); }
+    faunaChanged();
+    src('gbif', 'GBIF', 'ok', fmt(FA.counts.gbif) + ' occorrenze dagli atlanti degli uccelli e dai maggiori dataset su GBIF (' + fmt(j.totale_riquadro) + ' record animali nel riquadro di Milano). Raccolte il ' + esc(when) + '.');
+    src('ebird', 'eBird (via GBIF)', FA.counts.ebird ? 'ok' : 'err', fmt(FA.counts.ebird) + ' osservazioni di uccelli degli ultimi anni dal dataset eBird pubblicato su GBIF, raccolte il ' + esc(when) + '.');
+  } catch (e) { src('gbif', 'GBIF', 'err', esc(e.message)); src('ebird', 'eBird (via GBIF)', 'err', esc(e.message)); }
 }
 /* GBIF: conteggio delle occorrenze animali dentro ogni NIL. Calcolato in anticipo da tools/gbif_nil_counts.py
    e salvato in data/gbif_nil.json: chiederlo a GBIF a ogni visita voleva dire 88 richieste e un blocco (HTTP 429). */
@@ -243,15 +239,6 @@ async function loadGbifNilCounts() {
     src('gbifnil', 'GBIF, conteggi per quartiere', 'err', esc(e.message) + ': la statistica usa il campione di punti caricati.');
   }
   statsChanged();
-}
-async function loadEbird(key) {
-  try {
-    const js = await fetchJSON(CFG.ebird + '?lat=' + CFG.center[0] + '&lng=' + CFG.center[1] + '&dist=12&back=30&sppLocale=it&key=' + encodeURIComponent(key), {timeout: 30000});
-    for (const r of js) addFauna({src: 'ebird', id: r.subId + r.speciesCode, lon: +r.lng, lat: +r.lat, grp: 'uccelli', name: cap(r.comName), sci: r.sciName, date: String(r.obsDt || '').slice(0, 10), img: '',
-      url: 'https://ebird.org/checklist/' + r.subId, who: '', ds: r.locName || '', lic: 'termini eBird'});
-    faunaChanged(); src('ebird', 'eBird', 'ok', fmt(FA.counts.ebird) + ' osservazioni degli ultimi 30 giorni.');
-    try { localStorage.setItem('mv-ebird', key); } catch (e) {}
-  } catch (e) { src('ebird', 'eBird', 'err', 'Richiesta fallita: ' + esc(e.message) + '. Verifica la chiave.'); }
 }
 
 /* =====================================================================

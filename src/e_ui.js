@@ -211,8 +211,7 @@ function buildPanel() {
   layerRow('fauna', 'FAUNA URBANA', 'Segnalazioni geolocalizzate di cittadini e ricercatori.', SPR.uccelli,
     '<div class="warn">Le segnalazioni seguono la frequentazione delle persone, non la reale distribuzione degli animali.</div>' +
     Object.keys(GR_LBL).map(k => '<label class="chk"><input type="checkbox" data-grp="' + k + '" checked><canvas class="pix" width="16" height="16" style="width:20px;height:20px" data-ico="' + k + '"></canvas>' + GR_LBL[k] + '</label>').join('') +
-    '<p class="note" id="faunanum"></p><button class="btn sm" id="moreinat">Carica altre 1.000 da iNaturalist</button>' +
-    '<label style="margin-top:10px">Chiave eBird (facoltativa)<input type="password" id="ebkey" placeholder="incolla la tua chiave API" autocomplete="off"></label><button class="btn sm" id="ebgo">Carica eBird</button><p class="note">La chiave è gratuita su ebird.org/api/keygen e resta solo in questo browser.</p>');
+    '<p class="note" id="faunanum"></p><button class="btn sm" id="moreinat">Carica altre 1.000 da iNaturalist</button>');
   layerRow('nil', 'CONFINI DEI QUARTIERI', '88 Nuclei di Identità Locale (NIL), base delle statistiche.', SPR.nil);
   layerRow('nomi', 'NOMI DI VIE E QUARTIERI', 'Etichette della mappa di base.', SPR.nomi);
   // musica di sottofondo: spenta di default; se scelta, riparte al primo tocco (i browser vietano l'avvio automatico)
@@ -227,8 +226,6 @@ function buildPanel() {
   $('#fspe').onchange = e => { ST.fSpecies = e.target.value; applyTreeState(); };
   $('#treefile').onchange = e => { const f = e.target.files[0]; if (!f) return; if (!T.done) { e.target.value = ''; hudMsg('ATTENDI LA FINE DEL CARICAMENTO DEGLI ALBERI, POI RIPROVA'); return; } loadTreesFile(f); };
   $('#moreinat').onclick = async () => { const b = $('#moreinat'); b.disabled = true; b.textContent = 'Carico…'; await loadInat(5); b.disabled = false; b.textContent = 'Carica altre 1.000 da iNaturalist'; };
-  $('#ebgo').onclick = () => { const k = $('#ebkey').value.trim(); if (k) { src('ebird', 'eBird', 'wait', 'Richiesta in corso…'); loadEbird(k); } };
-  try { const k = localStorage.getItem('mv-ebird'); if (k) $('#ebkey').value = k; } catch (e) {}
   $('#btipo').onclick = loadTipologie;
   $('#kml').onchange = e => { if (e.target.files[0]) loadKml(e.target.files[0]); };
   // modalità
@@ -350,7 +347,7 @@ function renderStatic() {
     '<li><b>Comune di Milano, Open Data</b> (dati.comune.milano.it): confini dei NIL, residenti per NIL, parchi e giardini, orti urbani, giardini condivisi, alberi monumentali, aree verdi per tipologia, indici di calore e di verde per NIL (elaborazione progetto SPOTTED), censimento degli alberi (dataset ds2484 aggiornato al 31/03/2024, ritirato dal portale: il sito ne pubblica una copia ridotta alle colonne usate). Licenza <a href="https://creativecommons.org/licenses/by/4.0/deed.it" target="_blank" rel="noopener">CC BY 4.0</a>.</li>' +
     '<li><b>iNaturalist</b> (inaturalist.org): osservazioni e fotografie dei singoli utenti, ciascuna con la propria licenza indicata nella scheda. Uso tramite API pubblica.</li>' +
     '<li><b>GBIF</b> (gbif.org): occorrenze dai dataset aderenti, con licenze CC0, CC BY o CC BY-NC indicate per record. GBIF.org, Occurrence Search.</li>' +
-    '<li><b>eBird</b> (Cornell Lab of Ornithology): solo se inserisci una tua chiave, secondo i termini d\'uso dell\'API.</li>' +
+    '<li><b>eBird</b> (Cornell Lab of Ornithology): osservazioni di uccelli dal dataset eBird Observation Dataset pubblicato su GBIF, con la licenza indicata per record.</li>' +
     '<li><b>Wikipedia e Wikimedia Commons</b>: nei popup degli alberi, la prima frase della voce (testo CC BY-SA 4.0, con link alla voce) e una foto, con autore e licenza indicati sotto l\'immagine.</li>' +
     '<li><b>OpenStreetMap</b>: dati © OpenStreetMap contributors, licenza <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">ODbL</a>, per la mappa di base e, come ripiego, per gli alberi (Overpass API).</li>' +
     '<li><b>CARTO</b>: tasselli della mappa di base (Positron), © CARTO.</li>' +
@@ -375,7 +372,7 @@ async function main() {
   treeLayer = new SpriteLayer(drawTrees).addTo(map); faunaLayer = new SpriteLayer(drawFauna).addTo(map);
   src('nil', 'Confini dei NIL', 'wait', ''); src('pop', 'Residenti per NIL', 'wait', ''); src('parchi', 'Parchi e giardini', 'wait', ''); src('orti', 'Orti urbani', 'wait', ''); src('giardini', 'Giardini condivisi', 'wait', '');
   src('monum', 'Alberi monumentali', 'wait', ''); src('indici', 'Indici di calore e di verde', 'wait', ''); src('alberi', 'Alberi', 'wait', ''); src('inat', 'iNaturalist', 'wait', ''); src('gbif', 'GBIF', 'wait', '');
-  src('ebird', 'eBird', 'off', 'Richiede una chiave personale: inseriscila nel livello Fauna.');
+  src('ebird', 'eBird (via GBIF)', 'wait', '');
   src('pollini', 'Pollini (ARPA / ATS)', 'off', 'Nessuna fonte aperta e leggibile trovata: sezione predisposta.');
   src('landsat', 'Temperatura Landsat', 'off', 'Non integrabile in diretta senza un servizio intermedio: sezione predisposta.');
   const tk = {nil: Loader.task('Confini dei quartieri', 2), pop: Loader.task('Residenti', 1), parchi: Loader.task('Parchi e giardini', 2), orti: Loader.task('Orti urbani', 1), giardini: Loader.task('Giardini condivisi', 1),
@@ -413,10 +410,11 @@ async function main() {
   const pGiard = loadCkanGeo('giardini', 'Giardini condivisi').then(gj => { if (gj) { buildPlots('giardini', gj, PAL.pink, SPR.giardino, 'Giardino condiviso'); if (ST.on.giardini) LY.giardini.addTo(map); } tk.giardini.end('Giardini condivisi'); });
   const pMon = loadCkanGeo('monum', 'Alberi monumentali').then(gj => { if (gj) { buildMonum(gj); if (ST.on.monum) LY.monum.addTo(map); } tk.monum.end('Alberi monumentali'); });
   loadTrees(); firstTrees.then(() => tk.alberi.end(T.n ? 'Alberi piantati' : 'Alberi non disponibili'));
-  const pFauna = loadInat(1).then(() => { tk.fauna.end('Fauna avvistata'); loadGbif(); loadGbifNilCounts(); });
+  // la fauna (iNaturalist, poi GBIF ed eBird) si carica durante la schermata iniziale, con un tetto di attesa
+  const pFauna = loadInat(1).then(() => Promise.all([loadGbif(), loadGbifNilCounts()])).then(() => tk.fauna.end('Uccelli e insetti avvistati'));
 
   // la mappa si apre quando i livelli di base sono pronti; alberi e fauna possono proseguire dietro
-  const treesSoon = Promise.race([firstTrees, sleep(14000)]), faunaSoon = Promise.race([pFauna, sleep(9000)]);
+  const treesSoon = Promise.race([firstTrees, sleep(14000)]), faunaSoon = Promise.race([pFauna, sleep(12000)]);
   await Promise.all([pPop, pIdx, pParchi, pOrti, pGiard, pMon, treesSoon, faunaSoon]);
   clearTimeout(hard); Loader.finish();
   setMode('none');

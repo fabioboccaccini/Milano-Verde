@@ -17,6 +17,7 @@ Mappa interattiva di flora e fauna di Milano in stile pixel art anni '90. Un'uni
 | `build.py` | Concatena tutto in `index.html` |
 | `data/nil.geojson` | Copia dei confini dei NIL (ds964, PGT 2030, fermi al 2020), usata se il portale non li serve: a volte li manda senza CORS |
 | `data/parchi.json` | Copia dei parchi e giardini (ds89, versione del 06/05/2024) con le sole colonne usate e coordinate al metro: 1,1 MB, 180 KB compressi, contro 5 MB non compressi dal portale. È la prima scelta; il portale è il ripiego. Da rigenerare se il Comune aggiorna il dataset |
+| `data/gbif_fauna.json` | Punti di fauna da GBIF: fino a 3.000 osservazioni eBird degli ultimi 3 anni (dataset EOD) e 600 per ciascuno dei due maggiori atlanti, con nomi italiani da iNaturalist. 53 KB compressi contro 1,5 MB per ogni 300 record chiesti dal vivo (GBIF non comprime). Generato da `tools/gbif_fauna.py` |
 | `data/gbif_nil.json` | Conteggi GBIF delle occorrenze animali per NIL, generati da `tools/gbif_nil_counts.py` |
 | `tools/gbif_nil_counts.py` | Rigenera `data/gbif_nil.json` (88 richieste in sequenza a GBIF, circa due minuti): da rilanciare ogni tanto |
 | `data/wiki.json` | Per ogni specie (o genere) del censimento: voce di Wikipedia (it, altrimenti en), prima frase, foto da Wikimedia Commons con autore e licenza. Generato da `tools/wiki_species.py` (circa 15 minuti); copertura: 88,7% degli alberi con la scheda della specie, 11% del genere, 99,6% con foto |
@@ -42,7 +43,7 @@ Dipendenze esterne caricate da CDN: Leaflet 1.9.4 (con hash di integrità) e il 
 | OpenStreetMap via Overpass | Ripiego per gli alberi, mai provato dal vivo |
 | iNaturalist, GBIF | Formato verificato su risposte reali, flusso completo non provato dal vivo |
 | GBIF, conteggi per NIL | Precalcolati in `data/gbif_nil.json`: chiesti dal vivo (88 richieste a visita) GBIF rispondeva 429 e bloccava anche i punti |
-| eBird | Richiede chiave personale (campo nel pannello) |
+| eBird | Via GBIF (dataset EOD) in `data/gbif_fauna.json`: l'API di eBird vuole una chiave personale che i termini vietano di condividere |
 | CARTO Basemaps | Da fine agosto 2026 richiede una chiave. Funziona con la chiave in `a_tables.js` |
 | Pollini, Landsat | Sezioni predisposte, nessuna fonte integrata |
 
