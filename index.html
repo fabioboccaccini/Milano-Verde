@@ -30,6 +30,7 @@ canvas.pix,img.pix{image-rendering:pixelated;image-rendering:crisp-edges}
 #bar h1{font-family:var(--px);font-size:14px;margin:0;letter-spacing:1px;color:var(--lime);text-shadow:2px 2px 0 var(--leaf1);white-space:nowrap}
 #bar h1 small{color:var(--sun);font-size:8px;margin-left:12px;text-shadow:none}
 .mi{color:var(--sun)}
+#bgeo .ico{display:inline-flex;vertical-align:middle}#bgeo .ico img{width:20px;height:20px;display:block}
 #bar .sp{flex:1}
 .btn{font-family:var(--px);font-size:9px;line-height:1;padding:10px 10px;min-height:38px;background:var(--paper);color:var(--ink);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--leaf1);cursor:pointer;text-transform:uppercase;border-radius:0}
 .btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--leaf1)}
@@ -204,6 +205,7 @@ a{color:var(--water)}
   #bar #bpanel,#bar #bgeo{width:42px;height:42px;min-height:0;padding:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
   #bar .lbl{display:none}
   #bar .ico{font-size:18px;line-height:1;font-family:var(--tx)}
+  #bar #bgeo .ico img{width:28px;height:28px}
 }
 </style>
 </head>
@@ -1685,6 +1687,8 @@ function buildPanel() {
   [...$('#tabs').children].forEach(b => { b.onclick = () => showTab(b.dataset.t); });
   $('#bpanel').onclick = () => togglePanel();
   $('#bgeo').onclick = locateMe;
+  // sul pulsante della posizione lo stesso personaggio che compare sulla mappa
+  $('#bgeo .ico').innerHTML = '<img class="pix" width="28" height="28" alt="" src="' + sprURL(SPR.me, 2) + '">';
   if (isMobile()) togglePanel(false);
 }
 /* Geolocalizzazione: la posizione resta nel browser, non viene inviata a nessuna fonte */

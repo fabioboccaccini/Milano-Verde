@@ -238,6 +238,8 @@ function buildPanel() {
   [...$('#tabs').children].forEach(b => { b.onclick = () => showTab(b.dataset.t); });
   $('#bpanel').onclick = () => togglePanel();
   $('#bgeo').onclick = locateMe;
+  // sul pulsante della posizione lo stesso personaggio che compare sulla mappa
+  $('#bgeo .ico').innerHTML = '<img class="pix" width="28" height="28" alt="" src="' + sprURL(SPR.me, 2) + '">';
   if (isMobile()) togglePanel(false);
 }
 /* Geolocalizzazione: la posizione resta nel browser, non viene inviata a nessuna fonte */
