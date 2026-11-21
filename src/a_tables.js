@@ -39,6 +39,7 @@ const CFG = {
   gbif: 'https://api.gbif.org/v1/occurrence/search',
   wikiFauna: 'data/wiki_fauna.json', // lo stesso per le specie animali: tools/wiki_fauna.py
   wiki: 'data/wiki.json', // voce di Wikipedia, foto e licenza per specie: tools/wiki_species.py
+  monumSchede: 'data/monumentali_schede.json', // schede dei 13 alberi monumentali, riassunte a mano dalle pagine del Comune (che bloccano i programmi automatici)
   gbifNilCounts: 'data/gbif_nil.json', // conteggi per NIL precalcolati con tools/gbif_nil_counts.py
   gbifInat: '50c9509d-22c7-4a22-a47d-8c48425ef4a7', // dataset iNaturalist dentro GBIF: escluso per non contare due volte
   gbifFauna: 'data/gbif_fauna.json', // eBird (via GBIF, l'API di eBird vuole una chiave personale non condivisibile) e atlanti: tools/gbif_fauna.py

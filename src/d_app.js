@@ -333,14 +333,43 @@ function buildPlots(key, gj, color, sprite, titolo) {
   }
   LY[key] = grp;
 }
+/* Alberi monumentali: dati dal dataset del Comune (ds2489), arricchiti dalle schede in data/monumentali_schede.json
+   (nome, storia, età, fauna, stato di salute, link aggiornato, foto). Le schede si chiavano sull'ID del dataset;
+   un albero senza scheda mostra solo i dati del dataset. Senza foto propria si usa quella della specie da wiki.json. */
+let MONS = null;
+function monumPhoto(s) {
+  const f = s && s.foto;
+  if (f) return '<figure class="wk"><a href="' + esc(f.f) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + esc(f.i) + '" alt="' + esc(s.nome) + '"></a>' +
+    '<figcaption>Foto: ' + esc(f.a) + ' · ' + esc(f.l) + ' · Wikimedia Commons' + (f.prob ? ' · attribuzione probabile' : '') + '</figcaption></figure>';
+  const w = s && WIKI ? WIKI[s.wiki] || WIKI[s.wiki.split(' ')[0]] : null;
+  if (!w || !w.i) return '';
+  return '<figure class="wk"><a href="' + esc(w.f) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + esc(w.i) + '" alt="' + esc(w.t) + '"></a>' +
+    '<figcaption>Foto della specie, non di questo albero: ' + esc(w.a) + ' · ' + esc(w.l) + ' · Wikimedia Commons</figcaption></figure>';
+}
+function monumPopup(p) {
+  const s = MONS && MONS.schede ? MONS.schede[p.ID] : null, specie = p['SPECIE - NOME VOLGARE'] || 'Albero monumentale', link = s ? s.link : p.Link || '', rows = [];
+  if (s && s.eta) rows.push(['Età', esc(s.eta)]);
+  // la circonferenza dei platani a due tronchi arriva come «410 -300»
+  const circ = String(p['CIRCONFERENZA FUSTO (cm)'] || '').trim(), tronchi = circ.split(/\s*-\s*/).filter(Boolean);
+  rows.push(['Altezza', esc(p['ALTEZZA (m)'] || 'n.d.') + ' m'], ['Circonferenza', circ ? (tronchi.length > 1 ? esc(tronchi.join(' e ')) + ' cm (' + tronchi.length + ' tronchi)' : esc(circ) + ' cm') : 'n.d.']);
+  if (s && s.fauna) rows.push(['Chi ci vive', esc(s.fauna)]);
+  if (s && s.salute) rows.push(['Come sta', esc(s.salute)]);
+  rows.push(['Dove', esc((s && s.dove) || p['LOCALITÀ'] || '')]); // «dove» nella scheda corregge i refusi del dataset
+  const links = [];
+  if (/^https:\/\/www\.comune\.milano\.it\//.test(link)) links.push('<a href="' + esc(link) + '" target="_blank" rel="noopener">Scheda del Comune</a>');
+  if (s && s.intervista && /^https:\/\/www\.comune\.milano\.it\//.test(MONS.podcast || '')) links.push('<a href="' + esc(MONS.podcast) + '" target="_blank" rel="noopener">Intervista: «' + esc(s.intervista) + '»</a>');
+  return '<div class="pop"><h3>' + esc((s ? s.nome : specie).toUpperCase()) + '</h3><div class="sci">' + (s ? esc(specie) + ' · ' : '') + esc(p['SPECIE - NOME SCIENTIFICO'] || '') + '</div><span class="tag">MONUMENTALE</span>' +
+    monumPhoto(s) + (s && s.storia ? '<p class="wx">' + esc(s.storia) + '</p>' : '') +
+    '<table>' + rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('') + '</table>' +
+    (links.length ? '<p class="wx">' + links.join(' · ') + '</p>' : '') +
+    '<small>Fonte: dataset del Comune di Milano' + (s ? '; ' + esc(MONS.fonte || '') : '') + '.</small></div>';
+}
 function buildMonum(gj) {
   const grp = L.layerGroup();
   for (const f of gj.features) {
     if (!f.geometry) continue; const p = f.properties, c = f.geometry.coordinates;
-    L.marker([c[1], c[0]], {icon: sprIcon(SPR.monum, 40), zIndexOffset: 500}).bindPopup('<div class="pop"><h3>' + esc(String(p['SPECIE - NOME VOLGARE'] || 'Albero monumentale').toUpperCase()) + '</h3><div class="sci">' + esc(p['SPECIE - NOME SCIENTIFICO'] || '') + '</div><span class="tag">MONUMENTALE</span><table>' +
-      '<tr><td>Dove</td><td>' + esc(p['LOCALITÀ'] || '') + '</td></tr><tr><td>Altezza</td><td>' + esc(p['ALTEZZA (m)'] || 'n.d.') + ' m</td></tr><tr><td>Circonferenza</td><td>' + esc(p['CIRCONFERENZA FUSTO (cm)'] || 'n.d.') + ' cm</td></tr>' +
-      (p['CRITERI DI MONUMENTALITÀ'] ? '<tr><td>Criteri</td><td>' + esc(p['CRITERI DI MONUMENTALITÀ']) + '</td></tr>' : '') + '</table>' +
-      (/^https:\/\/www\.comune\.milano\.it\//.test(p.Link || '') ? '<small><a href="' + esc(p.Link) + '" target="_blank" rel="noopener">Scheda del Comune</a></small>' : '') + '</div>', {maxWidth: 300}).addTo(grp);
+    // il popup si compone all'apertura: schede e foto delle specie arrivano dopo il disegno dei marker
+    L.marker([c[1], c[0]], {icon: sprIcon(SPR.monum, 40), zIndexOffset: 500}).bindPopup(() => monumPopup(p), {maxWidth: 300}).addTo(grp);
   }
   LY.monum = grp;
 }

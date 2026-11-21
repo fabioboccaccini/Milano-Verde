@@ -354,7 +354,8 @@ function renderStatic() {
     '<li><b>iNaturalist</b> (inaturalist.org): osservazioni e fotografie dei singoli utenti, ciascuna con la propria licenza indicata nella scheda. Uso tramite API pubblica.</li>' +
     '<li><b>GBIF</b> (gbif.org): occorrenze dai dataset aderenti, con licenze CC0, CC BY o CC BY-NC indicate per record. GBIF.org, Occurrence Search.</li>' +
     '<li><b>eBird</b> (Cornell Lab of Ornithology): osservazioni di uccelli dal dataset eBird Observation Dataset pubblicato su GBIF, con la licenza indicata per record.</li>' +
-    '<li><b>Wikipedia e Wikimedia Commons</b>: nei popup di alberi e animali, la prima frase della voce (testo CC BY-SA 4.0, con link alla voce) e una foto, con autore e licenza indicati sotto l\'immagine.</li>' +
+    '<li><b>Wikipedia e Wikimedia Commons</b>: nei popup di alberi e animali, la prima frase della voce (testo CC BY-SA 4.0, con link alla voce) e una foto, con autore e licenza indicati sotto l\'immagine. Per sette alberi monumentali, foto dell\'esemplare da Commons (tre con attribuzione probabile); per gli altri, foto della specie.</li>' +
+    '<li><b>Schede degli alberi monumentali</b>: storia, età, fauna e stato di salute riassunti da FogliaMI a partire dalle pagine del Comune di Milano (aggiornate al 16/06/2026), con link alla scheda originale.</li>' +
     '<li><b>OpenStreetMap</b>: dati © OpenStreetMap contributors, licenza <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">ODbL</a>, per la mappa di base e, come ripiego, per gli alberi (Overpass API).</li>' +
     '<li><b>CARTO</b>: tasselli della mappa di base (Positron), © CARTO.</li>' +
     '<li><b>Leaflet</b> 1.9.4 (BSD-2) per la mappa; font Press Start 2P (SIL OFL) per i titoli.</li>' +
@@ -415,6 +416,7 @@ async function main() {
   const pOrti = loadCkanGeo('orti', 'Orti urbani').then(gj => { if (gj) { buildPlots('orti', gj, PAL.orange, SPR.orto, 'Orto urbano comunale'); if (ST.on.orti) LY.orti.addTo(map); } tk.orti.end('Orti seminati'); });
   const pGiard = loadCkanGeo('giardini', 'Giardini condivisi').then(gj => { if (gj) { buildPlots('giardini', gj, PAL.pink, SPR.giardino, 'Giardino condiviso'); if (ST.on.giardini) LY.giardini.addTo(map); } tk.giardini.end('Giardini condivisi'); });
   const pMon = loadCkanGeo('monum', 'Alberi monumentali').then(gj => { if (gj) { buildMonum(gj); if (ST.on.monum) LY.monum.addTo(map); } tk.monum.end('Alberi monumentali'); });
+  fetchJSON(CFG.monumSchede, {timeout: 30000}).then(j => { MONS = j; }).catch(() => {}); // senza schede i popup mostrano solo i dati del dataset
   loadTrees(); firstTrees.then(() => tk.alberi.end(T.n ? 'Alberi piantati' : 'Alberi non disponibili'));
   // la fauna (iNaturalist, poi GBIF ed eBird) si carica durante la schermata iniziale, con un tetto di attesa
   const pFauna = loadInat(1).then(() => Promise.all([loadGbif(), loadGbifNilCounts()])).then(() => tk.fauna.end('Uccelli e insetti avvistati'));
