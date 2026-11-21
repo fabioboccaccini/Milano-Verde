@@ -5,3 +5,10 @@ __pycache__/
 /*.geojson
 *.kml*
 604dd6bb-*.csv
+
+# materiale di lavoro e istruzioni locali: mai su git
+workbench/
+CLAUDE.md
+# file locali di Claude Code
+.claude/worktrees/
+.claude/settings.local.json
