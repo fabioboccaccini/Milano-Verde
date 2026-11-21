@@ -81,6 +81,7 @@ h2{font-family:var(--px);font-size:10px;margin:16px 0 8px;color:var(--leaf1);lin
 h2:first-child{margin-top:2px}
 p{margin:6px 0}
 .note{font-size:12.5px;color:var(--slate);margin:4px 0 0}
+.firma{margin:22px 0 8px;padding-top:12px;border-top:2px dashed var(--sand);text-align:center;font-family:var(--px);font-size:8px;line-height:2;color:var(--slate)}
 .warn{font-size:12.5px;background:#fff3c9;border:2px solid var(--ink);border-left:8px solid var(--sun);padding:6px 8px;margin:8px 0}
 .box{border:3px solid var(--ink);background:var(--white);padding:8px 10px;margin:8px 0;box-shadow:3px 3px 0 var(--sand)}
 .lay{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:2px dotted var(--sand)}
