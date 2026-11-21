@@ -11,7 +11,7 @@ Mappa interattiva di flora e fauna di Milano in stile pixel art anni '90. Un'uni
 | `src/a_tables.js` | Configurazione (URL delle fonti, chiave CARTO), palette, tabelle di fioritura e allergeni, nomi comuni |
 | `src/b_sprites.js` | Sprite pixel art generati da codice, animazione della schermata di caricamento |
 | `src/c_core.js` | Utilità, lettura ZIP/CSV/GeoJSON a flusso, mappa di base, livello sprite su canvas, NIL, archivio alberi e catena delle fonti |
-| `src/d_app.js` | Disegno di alberi e fauna, popup, iNaturalist/GBIF/eBird, livelli vettoriali del Comune, KML dei glicini |
+| `src/d_app.js` | Disegno di alberi e fauna, popup, iNaturalist/GBIF/eBird, livelli vettoriali del Comune, lettura del KML dei glicini (non collegata al menu: in attesa del permesso dell'autore) |
 | `src/e_ui.js` | Metriche per NIL, coropletica, classifica, incroci, pannello, geolocalizzazione, avvio |
 | `src/style.css`, `src/body.html` | Stile e struttura della pagina |
 | `build.py` | Concatena tutto in `index.html` |

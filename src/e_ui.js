@@ -232,7 +232,6 @@ function buildPanel() {
     if (!open) { el.style.display = 'none'; return; }
     el.style.display = ''; if (!el.dataset.loaded) loadTipologie();
   };
-  $('#kml').onchange = e => { if (e.target.files[0]) loadKml(e.target.files[0]); };
   // modalità
   MODES.forEach(([m, label, ic]) => { const b = document.createElement('button'); b.className = 'btn' + (m === 'none' ? ' on' : ''); b.dataset.m = m; b.textContent = label; b.onclick = () => setMode(m); $('#modes').appendChild(b); });
   $('#modeui').addEventListener('click', e => { const li = e.target.closest('li[data-g]'); if (li) { ST.fGenus = ST.fGenus === li.dataset.g ? '' : li.dataset.g; ST.fSpecies = ''; $('#fgen').value = ST.fGenus; fillSpecies(); applyTreeState(); } });

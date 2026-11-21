@@ -261,10 +261,6 @@ a{color:var(--water)}
     <section class="tab on" id="t-livelli">
       <h2>LIVELLI DELLA MAPPA</h2>
       <div id="layers"></div>
-      <h2>GLICINI (FILE KML)</h2>
-      <p class="note">Livello predisposto: carica un file KML o KMZ esportato da Google My Maps. I punti restano nel tuo browser.</p>
-      <input type="file" id="kml" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" style="margin:6px 0">
-      <div class="note" id="kmlmsg"></div>
     </section>
 
     <section class="tab" id="t-incroci">
@@ -1544,9 +1540,11 @@ function setLayer(key, on) {
 
 /* =====================================================================
    GLICINI: caricamento di un KML / KMZ locale (Google My Maps)
+   Non collegata al menu: il livello dei glicini aspetta il permesso dell'autore della mappa
+   (glicinimilano.it). Funzione e sprite restano pronti per quando arriverà.
    ===================================================================== */
 async function loadKml(file) {
-  const msg = $('#kmlmsg');
+  const msg = $('#kmlmsg') || {set textContent(v) {}};
   try {
     let text;
     if (/\.kmz$/i.test(file.name)) { const f = await unzipPick(await file.arrayBuffer(), /\.kml$/i); text = await new Response(f.stream).text(); } else text = await file.text();
@@ -1804,7 +1802,6 @@ function buildPanel() {
     if (!open) { el.style.display = 'none'; return; }
     el.style.display = ''; if (!el.dataset.loaded) loadTipologie();
   };
-  $('#kml').onchange = e => { if (e.target.files[0]) loadKml(e.target.files[0]); };
   // modalità
   MODES.forEach(([m, label, ic]) => { const b = document.createElement('button'); b.className = 'btn' + (m === 'none' ? ' on' : ''); b.dataset.m = m; b.textContent = label; b.onclick = () => setMode(m); $('#modes').appendChild(b); });
   $('#modeui').addEventListener('click', e => { const li = e.target.closest('li[data-g]'); if (li) { ST.fGenus = ST.fGenus === li.dataset.g ? '' : li.dataset.g; ST.fSpecies = ''; $('#fgen').value = ST.fGenus; fillSpecies(); applyTreeState(); } });

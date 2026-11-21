@@ -387,9 +387,11 @@ function setLayer(key, on) {
 
 /* =====================================================================
    GLICINI: caricamento di un KML / KMZ locale (Google My Maps)
+   Non collegata al menu: il livello dei glicini aspetta il permesso dell'autore della mappa
+   (glicinimilano.it). Funzione e sprite restano pronti per quando arriverà.
    ===================================================================== */
 async function loadKml(file) {
-  const msg = $('#kmlmsg');
+  const msg = $('#kmlmsg') || {set textContent(v) {}};
   try {
     let text;
     if (/\.kmz$/i.test(file.name)) { const f = await unzipPick(await file.arrayBuffer(), /\.kml$/i); text = await new Response(f.stream).text(); } else text = await file.text();
